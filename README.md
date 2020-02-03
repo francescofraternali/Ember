@@ -1,2 +1,6 @@
-# Ember
-Ember: Energy Management of Battery-less Event Detection Sensors with Reinforcement Learning
+# gym_energy_harvesting_sensors
+gym environment for energy harvesting sensors
+
+To install the environment, just go to the main folder and run the command:
+
+pip install -e .

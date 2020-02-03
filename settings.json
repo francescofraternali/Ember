@@ -1,0 +1,20 @@
+[
+  {
+    "title": "Middle of an Office. Events Detected: ",
+    "path_light_data": "/FF66_2150_Middle_Event_RL_Adapted.txt",
+    "agent_saved_folder": "",
+    "timesteps_total": 5e4,
+    "training_iterations": 100,
+    "light_divider": "2",
+    "train/test": "",
+    "start_with_restore_train": "no",
+    "start_train": "10/4/19 00:00:00",
+    "end_train": "12/09/19 00:00:00",
+    "time_train": 336,
+    "size_train_max": 700,
+    "sc_volt_start_train": "rand",
+    "sc_volt_start_test": "3.1",
+    "time_test": 168,
+    "repeat": 1
+}
+]
