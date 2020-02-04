@@ -17,4 +17,8 @@ https://www.digitalocean.com/community/tutorials/how-to-install-the-anaconda-pyt
 
 -  pip install ray[rllib]
 
+- pip install psutil
+
+- pip install python-csv
+
 - run training_test_pible.py
