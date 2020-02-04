@@ -16,3 +16,5 @@ https://www.digitalocean.com/community/tutorials/how-to-install-the-anaconda-pyt
 - pip install pandas
 
 -  pip install ray[rllib]
+
+- run training_test_pible.py
