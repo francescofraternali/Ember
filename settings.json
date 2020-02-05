@@ -4,7 +4,7 @@
     "path_light_data": "/FF66_2150_Middle_Event_RL_Adapted.txt",
     "agent_saved_folder": "",
     "timesteps_total": 5e4,
-    "training_iterations": 100,
+    "training_iterations": 10,
     "light_divider": "2",
     "train/test": "",
     "start_with_restore_train": "no",
