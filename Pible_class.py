@@ -9,7 +9,7 @@ from Pible_parameters import *
 import Pible_func
 import random
 
-path_light = "/mnt/c/Users/Francesco/Dropbox/EH/RL/RL_MY/Ember/FF66_2150_Middle_Event_RL_Adapted.txt"
+path_light = "/home/jamesdi1993/workspace/mesl/Ember/FF66_2150_Middle_Event_RL_Adapted.txt"
 light_divider = 2
 title = "test"
 curr_path = os.getcwd()

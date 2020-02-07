@@ -28,7 +28,8 @@ from ray.tune.registry import register_env
 
 def test_and_print_results(folder, iteration, start_train, end_train, start_test, end_test, sc_volt_start_test):
     Agnt = "PPO"
-    path = glob.glob(subprocess.getoutput('eval echo "~$USER"') + '/ray_results/' + folder  + '/checkpoint_' + str(iteration) + '/checkpoint-' + str(iteration), recursive=True)
+    pattern = subprocess.getoutput('eval echo "~$USER"') + '/ray_results/' + folder + '/checkpoint_' + str(iteration) + '/checkpoint-' + str(iteration)
+    path = glob.glob(pattern, recursive=True)
     print(path)
     assert len(path) == 1, path
     agent = ppo.PPOAgent(config={
@@ -161,7 +162,6 @@ def cores_available(): # Find number of cores available in the running system
     print("Number of cores used: ", int(spl[0])-2)
     return int(spl[0])-2
 
-
 if __name__ == "__main__":
     register_env("simplePible", lambda config: SimplePible(config))
 
@@ -228,6 +228,7 @@ if __name__ == "__main__":
 
         # Set Days for Testing
         start_test = end_train_temp
+
         #start_test = start_train
         start_test_date = datetime.datetime.strptime(start_test, '%m/%d/%y %H:%M:%S')
         end_test_date = start_test_date + datetime.timedelta(hours=time_test)
@@ -242,7 +243,7 @@ if __name__ == "__main__":
         proc = subprocess.Popen("rm -r " + agent_save + "/*", stdout=subprocess.PIPE, shell=True)
         (out, err) = proc.communicate()
         sleep(1)
-        proc = subprocess.Popen("cp -r /home/francesco/ray_results/" + folder + " " + agent_save, stdout=subprocess.PIPE, shell=True)
+        # proc = subprocess.Popen(path + folder + " " + agent_save, stdout=subprocess.PIPE, shell=True)
 
         # Start Testing
         print("\nTest: ", start_test, end_test)
