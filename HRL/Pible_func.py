@@ -87,6 +87,11 @@ def reward_func(action, event, SC_volt, death_days, death_min, next_wake_up):
     if action == 1 and event != 0:
         reward = 0.01*event
         detect = event
+    elif action == 0 and event != 0:
+        reward = -0.01*(event)
+        miss = event
+    elif action == 1 and event == 0:
+        reward = -0.001
 
     if SC_volt <= SC_volt_die:
         reward = -1 #-1

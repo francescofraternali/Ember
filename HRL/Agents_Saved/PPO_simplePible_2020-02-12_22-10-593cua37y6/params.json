@@ -1,0 +1,13 @@
+{
+  "batch_mode": "complete_episodes",
+  "env_config": {
+    "end_train": "12/09/19 00:00:00",
+    "resume": "/home/francesco/ray_results/PPO_simplePible_2020-02-12_21-52-46pwbx9obd/checkpoint_2600/checkpoint-2600",
+    "sc_volt_start_train": "rand",
+    "start_train": "10/13/19 20:00:00",
+    "train/test": "train"
+  },
+  "lr": 0.0001,
+  "num_workers": 6,
+  "observation_filter": "MeanStdFilter"
+}
