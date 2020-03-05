@@ -15,8 +15,7 @@ i_sens =  0.000100; time_sens = 0.2
 i_PIR_detect = 0.000102; time_PIR_detect = 2.5
 i_accel_sens = 0.0026; accel_sens_time = 0.27
 #i_sleep_PIR = i_sleep + 0.000001 # original
-#i_sleep_PIR = i_sleep + 0.0001
-i_sleep_PIR = i_sleep + 0.000001
+i_sleep_PIR = i_sleep + 0.00001
 
 '''
 if using_PIR == True:

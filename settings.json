@@ -9,12 +9,12 @@
     "train/test": "",
     "start_with_restore_train": "no",
     "start_train": "10/4/19 00:00:00",
-    "end_train": "12/09/19 00:00:00",
-    "time_train": 336,
-    "size_train_max": 700,
+    "end_train": "11/03/19 00:00:00",
+    "time_train": 168,
+    "size_train_max": 336,
     "sc_volt_start_train": "rand",
     "sc_volt_start_test": "3.1",
-    "time_test": 168,
+    "time_test": 24,
     "repeat": 1
 }
 ]
