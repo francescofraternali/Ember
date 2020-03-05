@@ -1,0 +1,7 @@
+.idea/
+Save_Data/*
+.pyc
+__pycache__/
+__pycache__/*
+graphs/
+Agents_Saved/
