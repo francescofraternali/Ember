@@ -6,6 +6,9 @@ using_PIR = True # PIR active and used to detect people
 PIR_events = 100 # Number of PIR events detected during a day. This could happen also when light is not on
 using_Accelerometer = False # Activate only if using Accelerometer
 
+# RL Parameters
+episode_lenght = 7 # in days
+
 # DO NOT MODIFY! POWER CONSUMPTION PARAMETERS! Change them only if you change components.
 SC_volt_min = 2.3; SC_volt_max = 5.5; SC_size = 1.5; SC_volt_die = 3.0
 

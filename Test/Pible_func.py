@@ -56,85 +56,70 @@ def Energy(SC_volt, light, action, next_wake_up_time, event):
 
     return SC_volt, Energy_Prod, Energy_Used
 
-def light_event_func(t_now, next_wake_up_time, count, len, light_prev, file_data, days_repeat, diff_days, light_div): # check how many events are on this laps of time
-        event = 0
+
+def light_event_func(t_now, next_wake_up_time, mode, PIR_on_off, events_found_dict, light_prev, light_div, file_data): # check how many events are on this laps of time
+        event_gt = 0
+        event_found = 0
         light = light_prev
-        #with open(file_data, 'r') as f:
-        #    file = f.readlines()
-        for i in range(count, len):
-            line = file_data[count].split("|")
-            #light_test = line[8]
-            check_time_old = datetime.datetime.strptime(line[0], '%m/%d/%y %H:%M:%S')
-            check_time = check_time_old + datetime.timedelta(days=days_repeat*diff_days)
-
-            #print(t_now, check_time, next_wake_up_time, t_now.time(),  check_time.time(), next_wake_up_time.time())
-            #print(t_now, check_time, next_wake_up_time, check_time_old, days_repeat, diff_days)
-            #sleep(2)
-            if t_now <= check_time and check_time <= next_wake_up_time:
-                light = int(int(line[8])/light_div)
-                PIR = int(line[6])
-                event += PIR
-                count += 1
-            elif check_time > next_wake_up_time:
+        #for i in range(count, len(file_data)):
+        for line in file_data:
+            PIR = 0
+            splitted = line.split("|")
+            check_time = datetime.datetime.strptime(splitted[0], '%m/%d/%y %H:%M:%S')
+            #check_time = check_time_file + datetime.timedelta(days=days_repeat*diff_days)
+            if t_now <= check_time and check_time < next_wake_up_time:
+                light = int(int(splitted[8])/light_div)
+                PIR = int(splitted[6])
+                event_gt += PIR
+            if (mode == 1 or mode == 2) and PIR > 0 and PIR_on_off > 0:
+                if check_time.time() not in events_found_dict:
+                    events_found_dict.append(check_time.time())
+            if check_time >= next_wake_up_time:
                 break
-            else: # check_time < t_now:
-                count += 1
-        return light, count, event
 
-def reward_func(action, event, SC_volt, death_days, death_min, next_wake_up):
+        return light, event_gt, events_found_dict
+
+def reward_func_high_level(mode, event, PIR_on_off, SC_Volt_array):
     reward = 0; detect = 0
     miss = np.nan
-    if action == 1 and event != 0:
-        reward = 0.01*event
+
+    if PIR_on_off == 1 and event != 0:
         detect = event
-    elif action == 0 and event != 0:
-        reward = -0.01*(event)
+        if mode == 2:
+            reward = 0.01*event
+        if mode == 1:
+            reward = 0.001*event
+    elif PIR_on_off == 0 and event != 0:
         miss = event
-    elif action == 1 and event == 0:
-        reward = -0.001
+        detect = np.nan
+    elif mode == 0 and event == 0:
+        reward = 0.001
 
-    if SC_volt <= SC_volt_die:
+    if SC_Volt_array[0] <= SC_volt_die:
         reward = -1 #-1
-        death_days +=1
-        death_min += next_wake_up
-        if death_days >= 1:
-            death_days = 1
 
-    return reward, detect, miss, death_days, death_min
+    return reward, detect, miss
 
-def randomize_light_time(input_data_raw):
-    input_data = []
-    rand_time = random.randrange(-15, 15, 1)
-    rand_light = random.randrange(-30, 30, 1)
-    #rand_time = 0
-    #rand_light = 0
-    for i in range(0,len(input_data_raw)):
-        line = input_data_raw[i].split("|")
-        curr_time = datetime.datetime.strptime(line[0], '%m/%d/%y %H:%M:%S')
-        curr_time = curr_time + datetime.timedelta(minutes=rand_time)
-        curr_time_new = curr_time.strftime('%m/%d/%y %H:%M:%S')
-        light = int(line[8])
-        new_light = int(light + ((light/100) * rand_light))
-        #if i == 1:
-        #    print(rand_light, i, light, new_light)
-        #    sleep(5)
-        if new_light < 0:
-            new_light = 0
-        line[0] = curr_time_new
-        line[8] = str(new_light)
-        new_line = '|'.join(line)
-        input_data.append(new_line)
+def build_inputs(time, light, sc_volt, num_hours_input, num_light_input, num_sc_volt_input):
+    hour_array = np.array([23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1, 0])
 
-    return input_data
+    light_array = np.array([light] * num_light_input)
 
-def build_inputs(time, num_hours_input, num_minutes_input, num_light_input, light):
-    hour = np.array([time.hour] * num_hours_input)
+    sc_array = np.array([sc_volt] * num_sc_volt_input)
 
-    minute = np.array([time.minute] * num_minutes_input)
+    return hour_array, light_array, sc_array
 
-    light_ar = np.array([light] * num_light_input)
+def updates_arrays(hour_array, light_array, SC_Volt_array, time, light, SC_temp):
+    hour_array = np.roll(hour_array, 1)
+    hour_array[0] = time.hour
 
-    return hour, minute, light_ar
+    light_array = np.roll(light_array, 1)
+    light_array[0] = light
+
+    SC_Volt_array = np.roll(SC_Volt_array, 1)
+    SC_Volt_array[0] = SC_temp
+
+    return hour_array, light_array, SC_Volt_array
 
 def calc_week(time, num_week_input):
     input_week = []
@@ -148,24 +133,19 @@ def calc_week(time, num_week_input):
     #print(week_ar)
     return week_ar
 
-def plot_hist(Time, Light, PIR_OnOff, State_Trans, Reward, Perf, SC_Volt, PIR, PIR_det, PIR_miss, episode, tot_rew, event_detect, tot_events, title_final):
-    #print("Total reward: ", tot_rew)
-    #print("SC_volt_init [V]:", SC_Volt[0], "SC_volt_final[V]: ", SC_Volt[-1])
-    #perc_init = (SC_Volt[0]/SC_volt_max)*100
-    #perc_final = (SC_Volt[-1]/SC_volt_max)*100
-    #print("SC_difference [%]: ", perc_init - perc_final)
-    #Start Plotting
+def plot_hist(Time, Light, Mode, PIR_OnOff, State_Trans, Reward, SC_Volt, PIR_det, PIR_miss, tot_rew, event_detect, tot_events, Dict_Events, title_final):
+
     plt.figure(1)
-    ax1 = plt.subplot(511)
-    #plt.title(('Transmitting every {0} sec, PIR {1} ({2} events). Tot reward: {3}').format('60', using_PIR, PIR_events, tot_rew))
-    plt.title(title_final, fontsize = 17)
+    ax1 = plt.subplot(811)
+    plt.title(('Tot reward: {0}').format(round(tot_rew, 3)))
+    #plt.title(title_final, fontsize = 17)
     plt.plot(Time, Light, 'b-', label = 'Light', markersize = 15)
     plt.ylabel('Light\n[lux]', fontsize=15)
     #plt.legend(loc=9, prop={'size': 10})
     #plt.ylim(0)
     ax1.set_xticklabels([])
     plt.grid(True)
-    ax2 = plt.subplot(512)
+    ax2 = plt.subplot(812)
     #plt.plot(Time, PIR, 'k.', label = 'PIR detection', markersize = 15)
     #plt.plot(Time, PIR_miss, 'r.', Time, PIR_det, 'k.', label = 'PIR detection', markersize = 15, )
     plt.plot(Time, PIR_miss, 'r.', label = 'Missed', markersize = 15)
@@ -175,14 +155,14 @@ def plot_hist(Time, Light, PIR_OnOff, State_Trans, Reward, Perf, SC_Volt, PIR, P
     plt.legend(loc="center left", prop={'size': 9})
     ax2.set_xticklabels([])
     plt.grid(True)
-    ax3 = plt.subplot(513)
+    ax3 = plt.subplot(813)
     plt.plot(Time, SC_Volt, 'm.', label = 'SC Voltage', markersize = 10)
     plt.ylabel('SC [V]\nVolt', fontsize=15)
     #plt.legend(loc=9, prop={'size': 10})
     plt.ylim(2.3, 3.7)
     ax3.set_xticklabels([])
     plt.grid(True)
-    ax4 = plt.subplot(514)
+    ax4 = plt.subplot(814)
     plt.plot(Time, PIR_OnOff, 'y.', label = 'PIR_OnOff', markersize = 15)
     plt.ylabel('PIR\nAction\n[num]', fontsize=15)
     #plt.xlabel('Time [h]', fontsize=20)
@@ -190,34 +170,48 @@ def plot_hist(Time, Light, PIR_OnOff, State_Trans, Reward, Perf, SC_Volt, PIR, P
     plt.ylim(0)
     ax4.set_xticklabels([])
     plt.grid(True)
-    ax5 = plt.subplot(515)
+
+    ax5 = plt.subplot(815)
     plt.plot(Time, State_Trans, 'g.', label = 'State Transition', markersize = 15)
     plt.ylabel('State\nTrans\n[min]', fontsize=15)
-    plt.xlabel('Time [h:m]', fontsize=15)
+    #plt.xlabel('Time [h:m]', fontsize=15)
     #plt.legend(loc=9, prop={'size': 10})
     #plt.ylim(0)
-    ax5.tick_params(axis='both', which='major', labelsize=12)
-    #plt.grid(True)
-    #ax6 = plt.subplot(616)
-    #plt.plot(Time, Reward, 'b.', label = 'Reward', markersize = 15)
-    #plt.ylabel('Reward\n[num]', fontsize=12)
-    #plt.xlabel('Time [hh:mm]', fontsize=15)
+    ax5.set_xticklabels([])
+    plt.grid(True)
+
+    ax6 = plt.subplot(816)
+    plt.plot(Time, Mode, 'c.', label = 'Mode', markersize = 15)
+    plt.ylabel('Mode\n[num]', fontsize=15)
+    #plt.xlabel('Time [h:m]', fontsize=15)
+    #plt.legend(loc=9, prop={'size': 10})
+    plt.ylim(-0.1, 2.1)
+    ax6.set_xticklabels([])
+    plt.grid(True)
+
+    ax7 = plt.subplot(817)
+    plt.plot(Time, Dict_Events, '.', label = 'Mode', markersize = 15, color='gray')
+    plt.ylabel('Events\nFounds\n[num]', fontsize=12)
+    #plt.xlabel('Time [h:m]', fontsize=15)
+    #plt.legend(loc=9, prop={'size': 10})
+    #plt.ylim(0, 2.1)
+    ax7.set_xticklabels([])
+    ax7.tick_params(axis='both', which='major', labelsize=12)
+    plt.grid(True)
+
+    ax8 = plt.subplot(818)
+    plt.plot(Time, Reward, 'b.', label = 'Reward', markersize = 15)
+    plt.ylabel('Reward\n[num]', fontsize=12)
+    plt.xlabel('Time [hh:mm]', fontsize=15)
+    #ax8.tick_params(axis='both', which='major', labelsize=12)
     #plt.legend(loc=9, prop={'size': 10})
     #plt.ylim(0)
     xfmt = mdates.DateFormatter('%m/%d %H')
-    ax5.xaxis.set_major_formatter(xfmt)
+    ax8.xaxis.set_major_formatter(xfmt)
     plt.grid(True)
-    plt.savefig('Save_Data/Graph_' + str(Time[0].date()) + '.pdf', bbox_inches='tight')
-    #plt.show()
+    #plt.savefig('/mnt/c/Users/Francesco/Dropbox/EH/RL/RL_MY/Ember/HRL/High_level_central/Save_Data/Graph_' + str(Time[0].date()) + '.pdf', bbox_inches='tight')
+    plt.show()
     plt.close("all")
-
-def write_results(tot_rew, start_train, end_train, start_test, end_test, percent, diff_days, energy_prod_tot_avg, energy_used_tot_avg, events_detect, Tot_events, death_days, death_min, volt_diff):
-    import json
-    dict = {"tot_rew": tot_rew, "start_train_date": start_train, "end_train_date": end_train, "start_test_date": start_test, "end_test_date": end_test, "percent": percent, "num_days": diff_days, "energy_prod_tot_avg": energy_prod_tot_avg, "energy_used_tot_avg": energy_used_tot_avg, "events_detect": events_detect, "Tot_events": Tot_events, "Death_days": str(death_days), "Death_min": str(death_min), "Volt_diff": str(volt_diff)}
-    json = json.dumps(dict)
-    with open("results.json","a") as f:
-        f.write(json)
-        f.write('\n')
 
 def find_agent_saved(path):
     Agnt = 'PPO'
@@ -269,22 +263,27 @@ def find_agent_saved(path):
     iteration = max
     print("\nFound folder: ", folder, "Last checkpoint found: ", iteration)
 
+
+    # Find best checkpoint, If nor uncomment here and it will use the last checkpoint found
     max_mean = - 10000
-    count = 0
-    for line in open(path + "/" + folder + "/result.json", 'r'):
-        count += 1
+    tot_iterations = iteration
+    #print("tot iterations", tot_iterations)
+    for count, line in enumerate(open(path + "/" + folder + "/result.json", 'r')):
         dict = json.loads(line)
-        if dict['episode_reward_mean'] >= max_mean and count > 9:
-            max_mean = dict['episode_reward_mean']
+        #print(count, int(tot_iterations/2))
+        if round(dict['episode_reward_mean'], 3) >= max_mean and count > int(tot_iterations/2):
+            max_mean = round(dict['episode_reward_mean'], 3)
             #iteration = count
             iteration = dict['training_iteration']
+            #print("saving", iteration)
         #data = json.loads(text)
-
         #for p in data["episode_reward_mean"]:
         #    print(p)
-    #print(iteration)
+    if iteration < 10:
+        iteration = 10
     iter_str = str(iteration)
     iteration = (int(iter_str[:-1])* 10)
-    print("Best checkpoint found:", iteration, ". Mean Reward Episode: ", max_mean)
+    print("Best checkpoint found:", iteration, ". Mean Reward Episode: ", round(max_mean, 3), ". Min Rew Episode", round(dict['episode_reward_min'], 3))
+
 
     return folder, iteration
