@@ -305,7 +305,6 @@ def find_agent_saved(path):
     iteration = max
     print("\nFound folder: ", folder, "Last checkpoint found: ", iteration)
 
-
     # Find best checkpoint, If nor uncomment here and it will use the last checkpoint found
     max_mean = - 10000
     tot_iterations = iteration

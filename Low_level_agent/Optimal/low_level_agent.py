@@ -20,7 +20,7 @@ from ray.rllib.agents import ppo
 from ray.tune.registry import register_env
 
 def test_and_print_results(folder, iteration, start_test, end_test, title, curr_path):
-    path = glob.glob(save_agent_folder + folder  + '/checkpoint_' + str(iteration) + '/checkpoint-' + str(iteration), recursive=True)
+    path = glob.glob(save_agent_folder + "/" + folder  + '/checkpoint_' + str(iteration) + '/checkpoint-' + str(iteration), recursive=True)
     config = ppo.DEFAULT_CONFIG.copy()
     config["observation_filter"] = 'MeanStdFilter'
     config["batch_mode"] = "complete_episodes"
@@ -89,6 +89,7 @@ def training_PPO():
         result = trainer.train()
         print(pretty_print(result))
 
+
         if int(result["training_iteration"]) % 10 == 0:
         #if max_min > int(result["episode_reward_min"])
             checkpoint = trainer.save()
@@ -102,9 +103,8 @@ def training_PPO():
     (out, err) = proc.communicate()
     sleep(0.5)
     # Save new Agent into Agents_Saved
-    proc = subprocess.Popen("cp -r /home/francesco/ray_results/" + folder + " " + save_agent_folder, stdout=subprocess.PIPE, shell=True)
+    proc = subprocess.Popen("cp -r /home/jamesdi1993/ray_results/" + folder + " " + save_agent_folder, stdout=subprocess.PIPE, shell=True)
     sleep(0.5)
-
 
 if __name__ == "__main__":
 
@@ -117,7 +117,8 @@ if __name__ == "__main__":
 
     title = settings[0]["title"]
     curr_path = os.getcwd()
-    save_agent_folder = curr_path + "/Agents_Saved/"
+    save_agent_folder = curr_path + "/Agents_Saved"
+    # save_agent_folder = "/home/jamesdi1993/ray_results/"
 
     ray.init()
 
@@ -129,7 +130,7 @@ if __name__ == "__main__":
 
     while True:
         print("\nStart Training: ", start_train_date, end_train_date)
-        #training_PPO()
+        training_PPO()
 
         start_test = start_train
         end_test = end_train
