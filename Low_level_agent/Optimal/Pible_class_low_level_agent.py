@@ -84,7 +84,7 @@ class SimplePible(gym.Env):
         #self.next_wake_up_time = 60
         temp_polling_min = 60
 
-        '''# optimal solution
+        # optimal solution
         if self.time.minute == 0 and (self.time.hour == 8 or self.time.hour == 10 or self.time.hour == 17):
             self.PIR_on_off = 1
             self.next_wake_up_time = 1
@@ -94,7 +94,7 @@ class SimplePible(gym.Env):
         else:
             self.PIR_on_off = 0
             self.next_wake_up_time = 60
-        '''# ending optimal solution
+        # ending optimal solution
 
         self.time_next = self.time + datetime.timedelta(minutes=self.next_wake_up_time) #next_wake_up_time # in min
 

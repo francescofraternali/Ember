@@ -129,7 +129,7 @@ if __name__ == "__main__":
 
     while True:
         print("\nStart Training: ", start_train_date, end_train_date)
-        training_PPO()
+        #training_PPO()
 
         start_test = start_train
         end_test = end_train
