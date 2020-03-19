@@ -63,8 +63,8 @@ def test_and_print_results(folder, iteration, start_test, end_test, title, curr_
             print("done")
             break
     print("tot reward", round(tot_rew, 3))
-    print("Energy Prod per day: ", energy_prod_tot/episode_lenght, "Energy Used: ", energy_used_tot/episode_lenght)
-    print("Tot events averaged per day: ", int(info["tot_events"])/episode_lenght)
+    print("Energy Prod per day: ", energy_prod_tot/episode_length, "Energy Used: ", energy_used_tot/episode_length)
+    print("Tot events averaged per day: ", int(info["tot_events"])/episode_length)
 
     env.render(tot_rew, "title")
     return path

@@ -35,7 +35,7 @@ class SimplePible(gym.Env):
 
         self.time = datetime.datetime.strptime("10/07/19 00:00:00", '%m/%d/%y %H:%M:%S')
         self.time_begin = self.time
-        self.end = self.time + datetime.timedelta(hours=24*episode_lenght)
+        self.end = self.time + datetime.timedelta(hours=24*episode_length)
         self.events_found_dict = []
 
         self.file_data = []
@@ -63,12 +63,11 @@ class SimplePible(gym.Env):
 
         self.Reward = []; self.Mode = []; self.Time = []; self.Light = []; self.PIR_OnOff_hist = []; self.SC_Volt = []; self.State_Trans = []
         self.event_det_hist = []; self.event_miss_hist = []; self.Len_Dict_Events = []; self.tot_events_detect = 0; self.tot_events = 0; self.mode = 0
-
         self.hour_array, self.minute_array, self.light_array, self.SC_Volt_array = Pible_func.build_inputs(self.time, self.light, self.start_sc, num_hours_input, num_minutes_input, num_light_input, num_sc_volt_input)
 
     def reset(self):
         self.time = self.time_begin
-        self.end = self.time + datetime.timedelta(hours=24*episode_lenght)
+        self.end = self.time + datetime.timedelta(hours=24*episode_length)
         self.events_found_dict = []
         #self.hour = np.array([self.time.hour] * num_hours_input)
         self.hour_array, self.minute_array, self.light_array, self.SC_Volt_array = Pible_func.build_inputs(self.time, self.light, self.start_sc, num_hours_input, num_minutes_input, num_light_input, num_sc_volt_input)
@@ -84,7 +83,7 @@ class SimplePible(gym.Env):
         #self.next_wake_up_time = 60
         temp_polling_min = 60
 
-        # optimal solution
+        """
         if self.time.minute == 0 and (self.time.hour == 8 or self.time.hour == 10 or self.time.hour == 17):
             self.PIR_on_off = 1
             self.next_wake_up_time = 1
@@ -95,6 +94,7 @@ class SimplePible(gym.Env):
             self.PIR_on_off = 0
             self.next_wake_up_time = 60
         # ending optimal solution
+        """
 
         self.time_next = self.time + datetime.timedelta(minutes=self.next_wake_up_time) #next_wake_up_time # in min
 

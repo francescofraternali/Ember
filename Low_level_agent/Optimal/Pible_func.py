@@ -12,7 +12,7 @@ import json
 
 def Energy(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_time, event):
     #SC_volt_save = SC_volt
-    next_wake_up_time_sec = next_wake_up_time * 60 # in seconds
+    next_wake_up_time_sec = next_wake_up_time *  60 # in seconds
     temp_polling_sec = temp_polling_min * 60 # in seconds
 
     num_of_pollings = int(next_wake_up_time_sec/temp_polling_sec)
