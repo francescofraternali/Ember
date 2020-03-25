@@ -9,6 +9,55 @@ import subprocess
 import json
 
 #from training_pible import light_divider
+def Energy_original(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_time, event):
+    #SC_volt_save = SC_volt
+    next_wake_up_time_sec = next_wake_up_time *  60 # in seconds
+    temp_polling_sec = temp_polling_min * 60 # in seconds
+
+    num_of_pollings = int(next_wake_up_time_sec/temp_polling_sec)
+
+    Energy_Rem = SC_volt * SC_volt * 0.5 * SC_size
+
+    if SC_volt <= SC_volt_min: # Node is death and not consuming energy
+        Energy_Used = 0
+    else: # Node is alive
+        if event == 0 or PIR_on_off == 0: # no events, so only sensing data
+            Energy_Used = (SC_volt * i_sens * 2) * time_sens * num_of_pollings # Energy used to sense sensors (i.e. light and temp)
+            time_sleep = next_wake_up_time_sec - time_sens
+        elif event > 0 and PIR_on_off == 1: # there are events. Every time there is a PIR event you sense once
+            Energy_Used = (SC_volt * i_sens * 2) * time_sens * num_of_pollings * event # Energy used to sense sensors (i.e. light)
+            time_sleep = next_wake_up_time_sec - (time_sens * event)
+
+        if PIR_on_off == 0: # no events are possible since PIR is off. But there is always at least one BLE communication
+            i_sl = i_sleep
+            Energy_Used += (time_BLE_sens * SC_volt * i_BLE_sens) # energy consumed by the node to send one data
+            time_sleep -= time_BLE_sens
+        else: # Node was able to detect events using the PIR and hence he will consume energy. If event = 0 then the PIR only consumes energy to be on
+            i_sl = i_sleep_PIR
+            if event == 0: # send only an heartbit data
+                Energy_Used += (time_BLE_sens * SC_volt * i_BLE_sens) # energy consumed by the node to send one data
+                time_sleep -= time_BLE_sens
+            else:
+                Energy_Used += (time_PIR_detect * SC_volt * i_PIR_detect) * event # energy consumed to detect people
+                time_sleep = time_sleep - (time_PIR_detect * event)
+                Energy_Used += (time_BLE_sens * SC_volt * i_BLE_sens) * event # energy consumed by the node to send data
+                time_sleep -= time_BLE_sens * event
+
+        Energy_Used += (time_sleep * SC_volt * i_sl) # Energy Consumed by the node in sleep mode
+
+    Energy_Prod = next_wake_up_time_sec * p_solar_1_lux * light
+    #print(Energy_Prod, Energy_Used, Energy_Rem, SC_volt, event)
+
+    # Energy cannot be lower than 0
+    Energy_Rem = max(Energy_Rem - Energy_Used + Energy_Prod, 0)
+
+    SC_volt = np.sqrt((2*Energy_Rem)/SC_size)
+
+    # Setting Boundaries for Voltage
+    SC_volt = np.minimum(SC_volt, SC_volt_max)
+    SC_volt = np.maximum(SC_volt, SC_volt_min)
+
+    return SC_volt, Energy_Prod, Energy_Used
 
 def Energy(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_time, event):
     #SC_volt_save = SC_volt
@@ -108,12 +157,62 @@ def reward_func_high_level(mode, event, PIR_on_off, SC_Volt_array):
 
     return reward, detect, miss
 
+
+def reward_func_low_level_original(mode, event, PIR_on_off, SC_Volt):
+    reward = 0;
+    if SC_Volt <= SC_volt_die:
+        reward = -1  # -1
+    elif PIR_on_off == 1 and event != 0:
+        reward = 0.01*event
+    elif PIR_on_off == 0 and event != 0:
+        reward = -0.01*event
+    elif PIR_on_off == 1 and event == 0:
+        reward = -0.001
+    return reward
+
+
+def event_count_func(mode, event, PIR_on_off, SC_Volt):
+    detect, miss = np.nan, np.nan
+    if SC_Volt <= SC_volt_die and event != 0:
+        miss = event
+    elif PIR_on_off == 1 and event != 0:
+        detect = event
+    elif PIR_on_off == 1 and event == 0:
+        detect = 0
+    elif PIR_on_off == 0 and event != 0:
+        miss = event
+    return detect, miss
+
+
+def events_look_ahead(t_now, wake_up_time, file_data):
+    """
+    Given current time and next wake up time, count number of events that happen in the time period.
+    :param t_now: the current time
+    :param wake_up_time: the time to wake up next
+    :param file_data: the data to parse from
+    """
+    event_counts = 0
+    next_wake_up_time = t_now + datetime.timedelta(minutes=wake_up_time)
+    for line in file_data:
+        PIR = 0
+        splitted = line.split("|")
+        check_time = datetime.datetime.strptime(splitted[0], '%m/%d/%y %H:%M:%S')
+        if check_time >= next_wake_up_time:
+            break
+        elif t_now <= check_time:
+            PIR = int(splitted[6])
+            event_counts += PIR
+        else:
+            continue
+    return event_counts
+
 def reward_func_low_level(mode, event, PIR_on_off, SC_Volt_array):
     reward = 0; detect = 0
     miss = np.nan
 
     if SC_Volt_array[0] <= SC_volt_die:
         reward = -1 #-1
+        miss = event
     elif PIR_on_off == 1 and event != 0:
         reward = 0.01*event
         detect = event
@@ -124,6 +223,7 @@ def reward_func_low_level(mode, event, PIR_on_off, SC_Volt_array):
     elif PIR_on_off == 1 and event == 0:
         reward = -0.001
 
+    reward = k1 * events_detected + k2 * net_energy;
     return reward, detect, miss
 
 def build_inputs(time, light, sc_volt, num_hours_input, num_minutes_input,  num_light_input, num_sc_volt_input):

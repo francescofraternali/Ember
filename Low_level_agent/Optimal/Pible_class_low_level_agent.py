@@ -102,10 +102,12 @@ class SimplePible(gym.Env):
 
         SC_temp, en_prod, en_used = Pible_func.Energy(self.SC_Volt_array[0], self.light, self.PIR_on_off, temp_polling_min, self.next_wake_up_time, event_gt)
 
-        reward, event_det, event_miss = Pible_func.reward_func_low_level(self.mode, event_gt, self.PIR_on_off, self.SC_Volt_array)
+        reward = Pible_func.reward_func_low_level_original(self.mode, event_gt, self.PIR_on_off, self.SC_Volt_array[0])
+        event_det, event_miss = Pible_func.event_count_func(self.mode, event_gt, self.PIR_on_off, self.SC_Volt_array[0])
 
         len_dict_event = np.array([len(self.events_found_dict)])
         if self.train == 'test':
+            # print("Time: %s; Events happened: %s; Events detected: %s; Events missed: %s; PIR: %s" % (self.time, event_gt, event_det, event_miss, self.PIR_on_off))
             self.Reward.append(reward); self.Time.append(self.time); self.Mode.append(self.mode); self.Light.append(self.light); self.PIR_OnOff_hist.append(self.PIR_on_off); self.SC_Volt.append(SC_temp);
             self.State_Trans.append(self.next_wake_up_time); self.event_det_hist.append(event_det); self.event_miss_hist.append(event_miss); self.Len_Dict_Events.append(len_dict_event)
 
