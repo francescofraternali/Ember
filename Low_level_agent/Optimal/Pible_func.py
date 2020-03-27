@@ -222,8 +222,6 @@ def reward_func_low_level(mode, event, PIR_on_off, SC_Volt_array):
         detect = np.nan
     elif PIR_on_off == 1 and event == 0:
         reward = -0.001
-
-    reward = k1 * events_detected + k2 * net_energy;
     return reward, detect, miss
 
 def build_inputs(time, light, sc_volt, num_hours_input, num_minutes_input,  num_light_input, num_sc_volt_input):
@@ -275,62 +273,74 @@ def calc_week(time, num_week_input):
     #print(week_ar)
     return week_ar
 
-def plot_hist(Time, Light, Mode, PIR_OnOff, State_Trans, Reward, SC_Volt, PIR_det, PIR_miss, tot_rew, event_detect, tot_events, Dict_Events, title_final):
-
+def plot_hist(Time, Light, Mode, PIR_OnOff, State_Trans, Reward, SC_Volt, PIR_det, \
+              PIR_miss, tot_rew, Dict_Events, divider, starting_Volt, title_final):
     plt.figure(1)
+
+    # Light plot;
     ax1 = plt.subplot(811)
-    plt.title(('Tot reward: {0}').format(round(tot_rew, 3)))
+    plt.title('Tot reward: %d; Starting Voltage: %.1f' % (round(tot_rew, 3), starting_Volt))
     #plt.title(title_final, fontsize = 17)
-    plt.plot(Time, Light, 'b-', label = 'Light', markersize = 15)
-    plt.ylabel('Light\n[lux]', fontsize=15)
+    plt.plot(Time, Light, 'b-', label = 'Light', markersize = 10)
+    plt.ylabel('Div:%s\nLight\n[lux]' % divider, fontsize=12)
     #plt.legend(loc=9, prop={'size': 10})
     #plt.ylim(0)
     ax1.set_xticklabels([])
     plt.grid(True)
+
+    # Event plots
     ax2 = plt.subplot(812)
     #plt.plot(Time, PIR, 'k.', label = 'PIR detection', markersize = 15)
     #plt.plot(Time, PIR_miss, 'r.', Time, PIR_det, 'k.', label = 'PIR detection', markersize = 15, )
+    print("The shape of time is: %s; Shape of PIR_miss: %s; Shape of PIR_det: %s" % (len(Time), len(PIR_miss), len(PIR_det)))
     plt.plot(Time, PIR_miss, 'r.', label = 'Missed', markersize = 15)
     plt.plot(Time, PIR_det, 'k.', label = 'Detected', markersize = 15)
-    plt.ylabel('PIR\nEvents\n[num]', fontsize=15)
+    plt.ylabel('PIR\nEvents\n[num]', fontsize=12)
     #plt.xlabel('Time [h]', fontsize=20)
     plt.legend(loc="center left", prop={'size': 9})
     ax2.set_xticklabels([])
     plt.grid(True)
+
+    # Volt plot
     ax3 = plt.subplot(813)
-    plt.plot(Time, SC_Volt, 'm.', label = 'SC Voltage', markersize = 10)
-    plt.ylabel('SC [V]\nVolt', fontsize=15)
+    plt.plot(Time, SC_Volt, 'm.', label = 'SC Voltage', markersize = 15)
+    plt.ylabel('SC [V]\nVolt', fontsize=12)
     #plt.legend(loc=9, prop={'size': 10})
     plt.ylim(2.3, 3.7)
     ax3.set_xticklabels([])
     plt.grid(True)
+
+    # Action plot
     ax4 = plt.subplot(814)
     plt.plot(Time, PIR_OnOff, 'y.', label = 'PIR_OnOff', markersize = 15)
-    plt.ylabel('PIR\nAction\n[num]', fontsize=15)
+    plt.ylabel('PIR\nAction\n[num]', fontsize=12)
     #plt.xlabel('Time [h]', fontsize=20)
     #plt.legend(loc=9, prop={'size': 10})
     plt.ylim(0)
     ax4.set_xticklabels([])
     plt.grid(True)
 
+    # Next wake-up time plot
     ax5 = plt.subplot(815)
     plt.plot(Time, State_Trans, 'g.', label = 'State Transition', markersize = 15)
-    plt.ylabel('State\nTrans\n[min]', fontsize=15)
+    plt.ylabel('State\nTrans\n[min]', fontsize=12)
     #plt.xlabel('Time [h:m]', fontsize=15)
     #plt.legend(loc=9, prop={'size': 10})
     #plt.ylim(0)
     ax5.set_xticklabels([])
     plt.grid(True)
 
+    # Mode plot
     ax6 = plt.subplot(816)
     plt.plot(Time, Mode, 'c.', label = 'Mode', markersize = 15)
-    plt.ylabel('Mode\n[num]', fontsize=15)
+    plt.ylabel('Mode\n[num]', fontsize=12)
     #plt.xlabel('Time [h:m]', fontsize=15)
     #plt.legend(loc=9, prop={'size': 10})
     plt.ylim(-0.1, 2.1)
     ax6.set_xticklabels([])
     plt.grid(True)
 
+    # Events found plot
     ax7 = plt.subplot(817)
     plt.plot(Time, Dict_Events, '.', label = 'Mode', markersize = 15, color='gray')
     plt.ylabel('Events\nFounds\n[num]', fontsize=12)
@@ -341,6 +351,7 @@ def plot_hist(Time, Light, Mode, PIR_OnOff, State_Trans, Reward, SC_Volt, PIR_de
     ax7.tick_params(axis='both', which='major', labelsize=12)
     plt.grid(True)
 
+    # Reward plot
     ax8 = plt.subplot(818)
     plt.plot(Time, Reward, 'b.', label = 'Reward', markersize = 15)
     plt.ylabel('Reward\n[num]', fontsize=12)

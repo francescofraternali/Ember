@@ -3,7 +3,7 @@ import numpy as np
 from gym.spaces import Discrete, Box
 from gym import spaces, logger
 import datetime
-from Pible_parameters import SC_volt_min, SC_volt_max, episode_length, time_format
+from Pible_parameters import SC_volt_min, SC_volt_max, SC_volt_die, episode_length, time_format
 import Pible_func
 import random
 from time import sleep
@@ -60,8 +60,8 @@ class SimplePible(gym.Env):
 
         self.observation_space = spaces.Tuple((
             spaces.Discrete(num_hours_input),                                       # hours
-            spaces.Box(0, 1000, shape=(num_light_input, ), dtype=np.float32),       # light
-            spaces.Box(SC_volt_min, SC_volt_max, shape=(num_sc_volt_input, ), dtype=np.float32), # battery voltage
+            spaces.Box(0, 1000, shape=(1, ), dtype=np.float32),                     # light
+            spaces.Box(SC_volt_min, SC_volt_max, shape=(1, ), dtype=np.float32),    # battery voltage
             spaces.Discrete(num_events_input)                                       # number of events
         ))
 
@@ -79,11 +79,9 @@ class SimplePible(gym.Env):
         self.end = self.time + datetime.timedelta(hours=24*episode_length)
         self.events_found_dict = []
         self.light = self.light_begin
-
-        # TODO: reset source voltage;
-
+        # self.SC_Volt = self.start_sc
         self.event_belief = Pible_func.events_look_ahead(self.time, MINS_LOOKAHEAD, self.file_data)
-        return self.time.hour, self.light, self.SC_Volt, self.event_belief
+        return self.time.hour, np.array([self.light]), np.array([self.SC_Volt]), self.event_belief
 
     def step(self, action):
         #print("action is: ", action)
@@ -108,12 +106,13 @@ class SimplePible(gym.Env):
         self.time_next = self.time + datetime.timedelta(minutes=self.next_wake_up_time) #next_wake_up_time in min
         self.light, event_gt, self.events_found_dict = Pible_func.light_event_func(self.time, self.time_next, self.mode, self.PIR_on_off, self.events_found_dict, self.light, self.light_div, self.file_data)
 
-        # rewards and counts of event
-        reward = Pible_func.reward_func_low_level_original(self.mode, event_gt, self.PIR_on_off, self.SC_Volt)
-        event_det, event_miss = Pible_func.event_count_func(self.mode, event_gt, self.PIR_on_off, self.SC_Volt)
-
         # energy produced and consumed;
         SC_temp, en_prod, en_used = Pible_func.Energy_original(self.SC_Volt, self.light, self.PIR_on_off, temp_polling_min, self.next_wake_up_time, event_gt)
+
+        # rewards and counts of event
+        event_det, event_miss = Pible_func.event_count_func(self.mode, event_gt, self.PIR_on_off, self.SC_Volt)
+        # reward = Pible_func.reward_func_low_level_original(self.mode, event_gt, self.PIR_on_off, self.SC_Volt)
+        reward = get_reward(event_gt, en_prod, en_used, action, SC_temp)
 
         len_dict_event = np.array([len(self.events_found_dict)])
         if self.stage == 'test':
@@ -143,7 +142,16 @@ class SimplePible(gym.Env):
         #info["death_min"] = self.death_min
         info["SC_volt"] = SC_temp
 
-        return (self.time.hour, self.light, self.SC_Volt, self.event_belief), reward, done, info
+        return (self.time.hour, np.array([self.light]), np.array([self.SC_Volt]), self.event_belief), reward, done, info
 
     def render(self, tot_rew, title):
-        Pible_func.plot_hist(self.Time, self.Light, self.Mode, self.PIR_OnOff_hist, self.State_Trans, self.Reward, self.SC_Volt_hist, self.event_det_hist, self.event_miss_hist, tot_rew, self.tot_events_detect, self.tot_events, self.Len_Dict_Events, title)
+        Pible_func.plot_hist(self.Time, self.Light, self.Mode, self.PIR_OnOff_hist, self.State_Trans, self.Reward, \
+                             self.SC_Volt_hist, self.event_det_hist, self.event_miss_hist, tot_rew, \
+                             self.Len_Dict_Events, self.light_div, self.start_sc, title)
+
+def get_reward(event, energy_prod, energy_consumed, PIR_on_off, SC_Volt):
+    k1, k2, k3 = 0.1, 1, 1
+    r1 = event * PIR_on_off                           # caught events;
+    r2 = - energy_consumed * (SC_Volt > SC_volt_die); # consumed energy when node is alive;
+    r3 = - int(SC_Volt < SC_volt_die);                # large penalty for battery is dead;
+    return k1 * r1 + k2 * r2 + k3 * r3;

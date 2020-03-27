@@ -4,7 +4,7 @@
     "path_light_data": "Fake_Input.txt",
     "agent_saved_folder": "",
     "training_iterations": 100,
-    "light_divider": "5",
+    "light_divider": "7",
     "train/test": "",
     "start_train": "10/7/19 00:00:00",
     "end_train": "10/14/19 00:00:00",
