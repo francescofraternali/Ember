@@ -12,6 +12,7 @@ import json
 
 def Energy(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_time, event):
     #SC_volt_save = SC_volt
+    volt_regulator = 2.55
     next_wake_up_time_sec = next_wake_up_time * 60 # in seconds
     temp_polling_sec = temp_polling_min * 60 # in seconds
 
@@ -23,28 +24,28 @@ def Energy(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_time, even
         Energy_Used = 0
     else: # Node is alive
         if event == 0 or PIR_on_off == 0: # no events, so only sensing data
-            Energy_Used = (SC_volt * i_sens * 2) * time_sens * num_of_pollings # Energy used to sense sensors (i.e. light and temp)
+            Energy_Used = (volt_regulator * i_sens * 2) * time_sens * num_of_pollings # Energy used to sense sensors (i.e. light and temp)
             time_sleep = next_wake_up_time_sec - time_sens
         elif event > 0 and PIR_on_off == 1: # there are events. Every time there is a PIR event you sense once
-            Energy_Used = (SC_volt * i_sens * 2) * time_sens * num_of_pollings * event # Energy used to sense sensors (i.e. light)
+            Energy_Used = (volt_regulator * i_sens * 2) * time_sens * num_of_pollings * event # Energy used to sense sensors (i.e. light)
             time_sleep = next_wake_up_time_sec - (time_sens * event)
 
         if PIR_on_off == 0: # no events are possible since PIR is off. But there is always at least one BLE communication
             i_sl = i_sleep
-            Energy_Used += (time_BLE_sens * SC_volt * i_BLE_sens) # energy consumed by the node to send one data
+            Energy_Used += (time_BLE_sens * volt_regulator * i_BLE_sens) # energy consumed by the node to send one data
             time_sleep -= time_BLE_sens
         else: # Node was able to detect events using the PIR and hence he will consume energy. If event = 0 then the PIR only consumes energy to be on
             i_sl = i_sleep_PIR
             if event == 0: # send only an heartbit data
-                Energy_Used += (time_BLE_sens * SC_volt * i_BLE_sens) # energy consumed by the node to send one data
+                Energy_Used += (time_BLE_sens * volt_regulator * i_BLE_sens) # energy consumed by the node to send one data
                 time_sleep -= time_BLE_sens
             else:
-                Energy_Used += (time_PIR_detect * SC_volt * i_PIR_detect) * event # energy consumed to detect people
+                Energy_Used += (time_PIR_detect * volt_regulator * i_PIR_detect) * event # energy consumed to detect people
                 time_sleep = time_sleep - (time_PIR_detect * event)
-                Energy_Used += (time_BLE_sens * SC_volt * i_BLE_sens) * event # energy consumed by the node to send data
+                Energy_Used += (time_BLE_sens * volt_regulator * i_BLE_sens) * event # energy consumed by the node to send data
                 time_sleep -= time_BLE_sens * event
 
-        Energy_Used += (time_sleep * SC_volt * i_sl) # Energy Consumed by the node in sleep mode
+        Energy_Used += (time_sleep * volt_regulator * i_sl) # Energy Consumed by the node in sleep mode
 
     Energy_Prod = next_wake_up_time_sec * p_solar_1_lux * light
     #print(Energy_Prod, Energy_Used, Energy_Rem, SC_volt, event)
