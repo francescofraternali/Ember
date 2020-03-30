@@ -28,6 +28,7 @@ def Energy_original(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_t
             Energy_Used = (SC_volt * i_sens * 2) * time_sens * num_of_pollings * event # Energy used to sense sensors (i.e. light)
             time_sleep = next_wake_up_time_sec - (time_sens * event)
 
+        # BLE communication
         if PIR_on_off == 0: # no events are possible since PIR is off. But there is always at least one BLE communication
             i_sl = i_sleep
             Energy_Used += (time_BLE_sens * SC_volt * i_BLE_sens) # energy consumed by the node to send one data
@@ -353,7 +354,7 @@ def plot_hist(Time, Light, Mode, PIR_OnOff, State_Trans, Reward, SC_Volt, PIR_de
 
     # Reward plot
     ax8 = plt.subplot(818)
-    plt.plot(Time, Reward, 'b.', label = 'Reward', markersize = 15)
+    plt.plot(Time, Reward, 'b.', label = 'Reward', markersize = 8)
     plt.ylabel('Reward\n[num]', fontsize=12)
     plt.xlabel('Time [hh:mm]', fontsize=15)
     #ax8.tick_params(axis='both', which='major', labelsize=12)

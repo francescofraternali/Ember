@@ -60,10 +60,11 @@ class SimplePible(gym.Env):
 
         self.observation_space = spaces.Tuple((
             spaces.Discrete(num_hours_input),                                       # hours
-            spaces.Box(0, 1000, shape=(1, ), dtype=np.float32),                     # light
             spaces.Box(SC_volt_min, SC_volt_max, shape=(1, ), dtype=np.float32),    # battery voltage
             spaces.Discrete(num_events_input)                                       # number of events
         ))
+
+        # removed light spaces.Box(0, 1000, shape=(1, ), dtype=np.float32),                     # light
 
         self.Reward = []; self.Mode = []; self.Time = []; self.Light = []; self.PIR_OnOff_hist = []; self.SC_Volt_hist = []; self.State_Trans = []
         self.event_det_hist = []; self.event_miss_hist = []; self.Len_Dict_Events = []; self.tot_events_detect = 0; self.tot_events = 0; self.mode = 0
@@ -81,7 +82,8 @@ class SimplePible(gym.Env):
         self.light = self.light_begin
         # self.SC_Volt = self.start_sc
         self.event_belief = Pible_func.events_look_ahead(self.time, MINS_LOOKAHEAD, self.file_data)
-        return self.time.hour, np.array([self.light]), np.array([self.SC_Volt]), self.event_belief
+        # return self.time.hour, np.array([self.light]), np.array([self.SC_Volt]), self.event_belief
+        return self.time.hour, np.array([self.SC_Volt]), self.event_belief
 
     def step(self, action):
         #print("action is: ", action)
@@ -142,7 +144,8 @@ class SimplePible(gym.Env):
         #info["death_min"] = self.death_min
         info["SC_volt"] = SC_temp
 
-        return (self.time.hour, np.array([self.light]), np.array([self.SC_Volt]), self.event_belief), reward, done, info
+         # return (self.time.hour, np.array([self.light]), np.array([self.SC_Volt]), self.event_belief), reward, done, info
+        return (self.time.hour, np.array([self.SC_Volt]), self.event_belief), reward, done, info
 
     def render(self, tot_rew, title):
         Pible_func.plot_hist(self.Time, self.Light, self.Mode, self.PIR_OnOff_hist, self.State_Trans, self.Reward, \
@@ -150,7 +153,7 @@ class SimplePible(gym.Env):
                              self.Len_Dict_Events, self.light_div, self.start_sc, title)
 
 def get_reward(event, energy_prod, energy_consumed, PIR_on_off, SC_Volt):
-    k1, k2, k3 = 0.1, 1, 1
+    k1, k2, k3 = 1, 1, 1
     r1 = event * PIR_on_off                           # caught events;
     r2 = - energy_consumed * (SC_Volt > SC_volt_die); # consumed energy when node is alive;
     r3 = - int(SC_Volt < SC_volt_die);                # large penalty for battery is dead;
