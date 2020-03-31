@@ -5,3 +5,7 @@ __pycache__/
 __pycache__/*
 graphs/
 Agents_Saved/
+./Low_level_agent/Optimal/Agents_Saved/
+./Low_level_agent/Optimal/Agents_Saved/*
+./Low_level_agent/Optimal/__pycache__/*
+

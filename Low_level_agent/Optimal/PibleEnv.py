@@ -109,12 +109,12 @@ class SimplePible(gym.Env):
         self.light, event_gt, self.events_found_dict = Pible_func.light_event_func(self.time, self.time_next, self.mode, self.PIR_on_off, self.events_found_dict, self.light, self.light_div, self.file_data)
 
         # energy produced and consumed;
-        SC_temp, en_prod, en_used = Pible_func.Energy_original(self.SC_Volt, self.light, self.PIR_on_off, temp_polling_min, self.next_wake_up_time, event_gt)
+        SC_temp, en_prod, en_used, en_PIR = Pible_func.Energy_original(self.SC_Volt, self.light, self.PIR_on_off, temp_polling_min, self.next_wake_up_time, event_gt)
 
         # rewards and counts of event
         event_det, event_miss = Pible_func.event_count_func(self.mode, event_gt, self.PIR_on_off, self.SC_Volt)
         # reward = Pible_func.reward_func_low_level_original(self.mode, event_gt, self.PIR_on_off, self.SC_Volt)
-        reward = get_reward(event_gt, en_prod, en_used, action, SC_temp)
+        reward = get_reward(event_gt, en_prod, en_used, en_PIR, action, SC_temp)
 
         len_dict_event = np.array([len(self.events_found_dict)])
         if self.stage == 'test':
@@ -152,9 +152,9 @@ class SimplePible(gym.Env):
                              self.SC_Volt_hist, self.event_det_hist, self.event_miss_hist, tot_rew, \
                              self.Len_Dict_Events, self.light_div, self.start_sc, title)
 
-def get_reward(event, energy_prod, energy_consumed, PIR_on_off, SC_Volt):
-    k1, k2, k3 = 1, 1, 1
-    r1 = event * PIR_on_off                           # caught events;
-    r2 = - energy_consumed * (SC_Volt > SC_volt_die); # consumed energy when node is alive;
+def get_reward(event, energy_prod, energy_consumed, energy_PIR, PIR_on_off, SC_Volt):
+    k1, k2, k3 = 1, 90, 10
+    r1 = event * PIR_on_off * (SC_Volt > SC_volt_die) # caught events;
+    r2 = - energy_PIR * (SC_Volt > SC_volt_die);      # consumed energy when node is alive;
     r3 = - int(SC_Volt < SC_volt_die);                # large penalty for battery is dead;
     return k1 * r1 + k2 * r2 + k3 * r3;

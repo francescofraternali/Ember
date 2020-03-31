@@ -8,6 +8,8 @@ import random
 import subprocess
 import json
 
+VOLT_FACTOR = 3.2
+
 #from training_pible import light_divider
 def Energy_original(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_time, event):
     #SC_volt_save = SC_volt
@@ -18,6 +20,8 @@ def Energy_original(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_t
 
     Energy_Rem = SC_volt * SC_volt * 0.5 * SC_size
 
+    Energy_PIR = 0
+
     if SC_volt <= SC_volt_min: # Node is death and not consuming energy
         Energy_Used = 0
     else: # Node is alive
@@ -27,6 +31,7 @@ def Energy_original(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_t
         elif event > 0 and PIR_on_off == 1: # there are events. Every time there is a PIR event you sense once
             Energy_Used = (SC_volt * i_sens * 2) * time_sens * num_of_pollings * event # Energy used to sense sensors (i.e. light)
             time_sleep = next_wake_up_time_sec - (time_sens * event)
+            Energy_PIR = (SC_volt * i_sens * 2) * time_sens * num_of_pollings * event
 
         # BLE communication
         if PIR_on_off == 0: # no events are possible since PIR is off. But there is always at least one BLE communication
@@ -38,11 +43,17 @@ def Energy_original(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_t
             if event == 0: # send only an heartbit data
                 Energy_Used += (time_BLE_sens * SC_volt * i_BLE_sens) # energy consumed by the node to send one data
                 time_sleep -= time_BLE_sens
+
+                Energy_PIR += (time_BLE_sens * SC_volt * i_BLE_sens)
             else:
                 Energy_Used += (time_PIR_detect * SC_volt * i_PIR_detect) * event # energy consumed to detect people
                 time_sleep = time_sleep - (time_PIR_detect * event)
                 Energy_Used += (time_BLE_sens * SC_volt * i_BLE_sens) * event # energy consumed by the node to send data
                 time_sleep -= time_BLE_sens * event
+
+                Energy_PIR += (time_PIR_detect * SC_volt * i_PIR_detect) * event
+                Energy_PIR += (time_BLE_sens * SC_volt * i_BLE_sens) * event
+
 
         Energy_Used += (time_sleep * SC_volt * i_sl) # Energy Consumed by the node in sleep mode
 
@@ -58,7 +69,7 @@ def Energy_original(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_t
     SC_volt = np.minimum(SC_volt, SC_volt_max)
     SC_volt = np.maximum(SC_volt, SC_volt_min)
 
-    return SC_volt, Energy_Prod, Energy_Used
+    return SC_volt, Energy_Prod, Energy_Used, Energy_PIR
 
 def Energy(SC_volt, light, PIR_on_off, temp_polling_min, next_wake_up_time, event):
     #SC_volt_save = SC_volt

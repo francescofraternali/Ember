@@ -14,6 +14,17 @@ class RandomPolicy():
     def get_action(self, obs):
         return np.random.randint(0, 2) # generate a random action from {0, 1}
 
+class FixedPolicy():
+    '''
+    Always turn ON/OFF the PIR sensor
+    '''
+    def __init__(self, action):
+        super()
+        self.action = action
+
+    def get_action(self, obs):
+        return self.action
+
 class OptimalPolicy():
     def __init__(self):
         super()
@@ -59,7 +70,7 @@ if __name__ == "__main__":
     obs = env.reset() # TODO: check if this complies with gym API
     done = False
 
-    policy = RandomPolicy()
+    policy = FixedPolicy(action = 1) # always turn it off
     total_reward, energy_used_tot, energy_prod_tot = 0, 0, 0
     while not done:
         action = policy.get_action(obs)
