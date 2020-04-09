@@ -16,6 +16,11 @@ import glob
 from ray.rllib.agents import ppo
 from ray.tune.registry import register_env
 
+GAMMA = 0.95;
+
+def get_discount_factor(steps, gamma):
+    return gamma ** (steps - 1)
+
 def test_and_print_results(folder, iteration, start_test, end_test, title, curr_path):
     path = glob.glob(save_agent_folder + "/" + folder  + '/checkpoint_' + str(iteration) + '/checkpoint-' + str(iteration), recursive=True)
     config = ppo.DEFAULT_CONFIG.copy()
@@ -31,18 +36,21 @@ def test_and_print_results(folder, iteration, start_test, end_test, title, curr_
        "end_test": end_test,
        "sc_volt_start_test": 3.2,
     }
+
     agent = ppo.PPOTrainer(config=config, env="simplePible")
     agent.restore(path[0])
     env = SimplePible(config["env_config"])
     obs = env.reset()
-    tot_rew = 0;  energy_used_tot = 0;  energy_prod_tot = 0
+    tot_rew = 0;  energy_used_tot = 0;  energy_prod_tot = 0; steps = 0; discount = 1;
     while True:
         learned_action = agent.compute_action(observation = obs)
         obs, reward, done, info = env.step(learned_action)
+        steps += 1
         #print(learned_action)
         energy_used_tot += float(info["energy_used"])
         energy_prod_tot += float(info["energy_prod"])
-        tot_rew += reward
+        tot_rew += discount * reward
+        discount = get_discount_factor(steps, GAMMA)
 
         if done:
             # obs = env.reset()
@@ -115,7 +123,7 @@ if __name__ == "__main__":
 
     while True:
         print("\nStart Training: ", start_train_date, end_train_date)
-        training_PPO()
+        # training_PPO()
 
         start_test = start_train
         end_test = end_train

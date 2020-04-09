@@ -155,6 +155,6 @@ class SimplePible(gym.Env):
 def get_reward(event, energy_prod, energy_consumed, energy_PIR, PIR_on_off, SC_Volt):
     k1, k2, k3 = 1, 90, 10
     r1 = event * PIR_on_off * (SC_Volt > SC_volt_die) # caught events;
-    r2 = - energy_PIR * (SC_Volt > SC_volt_die);      # consumed energy when node is alive;
+    r2 = - energy_PIR * PIR_on_off * (SC_Volt > SC_volt_die);      # consumed energy when node is alive;
     r3 = - int(SC_Volt < SC_volt_die);                # large penalty for battery is dead;
     return k1 * r1 + k2 * r2 + k3 * r3;
