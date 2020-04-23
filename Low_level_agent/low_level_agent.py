@@ -19,7 +19,7 @@ import glob
 from ray.rllib.agents import ppo
 from ray.tune.registry import register_env
 import multiprocessing
-
+import getpass
 
 
 def test_and_print_results(folder, iteration, start_test, end_test, title, curr_path, sc_volt_test):
@@ -114,7 +114,7 @@ def training_PPO():
     (out, err) = proc.communicate()
     sleep(0.5)
     # Save new Agent into Agents_Saved
-    proc = subprocess.Popen("cp -r /home/francesco/ray_results/" + folder + " " + save_agent_folder, stdout=subprocess.PIPE, shell=True)
+    proc = subprocess.Popen("cp -r /home/" + getpass.getuser() + "/ray_results/" + folder + " " + save_agent_folder, stdout=subprocess.PIPE, shell=True)
     sleep(0.5)
 
 def cores_available(): # Find number of cores available in the running system
