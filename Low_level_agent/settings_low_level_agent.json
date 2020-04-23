@@ -3,7 +3,7 @@
     "title": "Test ",
     "path_light_data": "2106_Middle_BattEH_FF22.txt",
     "agent_saved_folder": "/Agents_Saved/",
-    "training_iterations": 1000,
+    "training_iterations": 10,
     "num_cores": "max",
     "light_divider": "1",
     "train/test": "train",
