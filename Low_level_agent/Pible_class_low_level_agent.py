@@ -36,7 +36,7 @@ class SimplePible(gym.Env):
             self.end_data_date = datetime.datetime.strptime(config["end_test"], '%m/%d/%y %H:%M:%S')
             self.start_sc = config["sc_volt_start_test"]
         elif self.train == "real":
-            Ember_RL_func.sync_input_data(pwd, bs_name, file_light, destination)
+            Ember_RL_func.sync_input_data(settings[0]["pwd"], settings[0]["bs_name"], file_light, destination)
             last_row = Ember_RL_func.last_valid_row(file_light)
             start_data_date = datetime.datetime.strptime(last_row, '%m/%d/%y %H:%M:%S')
 

@@ -14,6 +14,8 @@
     "start_test": "04/01/20 00:00:00",
     "end_test": "04/08/20 00:00:00",
     "sc_volt_start_train": "3.2",
-    "sc_volt_start_test": "3.2"
+    "sc_volt_start_test": "3.2",
+    "bs_name": "pi@cse-wifi-bs2106.dynamic.ucsd.edu",
+    "pwd": "'$yn3rgYGWB7V9'"
 }
 ]
