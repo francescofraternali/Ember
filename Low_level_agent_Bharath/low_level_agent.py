@@ -22,7 +22,7 @@ import multiprocessing
 import getpass
 
 
-def test_and_print_results(folder, iteration, start_test, end_test, title, curr_path, sc_volt_test, test_train_real):
+def test_and_print_results(folder, iteration, start_test, end_test, title, curr_path, sc_volt_test):
     path = glob.glob(save_agent_folder + folder  + '/checkpoint_' + str(iteration) + '/checkpoint-' + str(iteration), recursive=True)
     config = ppo.DEFAULT_CONFIG.copy()
     config["observation_filter"] = 'MeanStdFilter'
@@ -32,7 +32,7 @@ def test_and_print_results(folder, iteration, start_test, end_test, title, curr_
     config["env_config"] = {
        "settings": settings,
        "main_path": curr_path,
-       "train/test": test_train_real,
+       "train/test": "test",
        "start_test": start_test,
        "end_test": end_test,
        "sc_volt_start_test": sc_volt_test,
@@ -58,9 +58,6 @@ def test_and_print_results(folder, iteration, start_test, end_test, title, curr_
         #learned_action = [action_0_select, action_1_select]
 
         obs, reward, done, info = env.step(learned_action)
-        if test_train_real = "real":
-            print("sleeping " + info["state_transition"] " mins")
-            sleep(int(info["state_transition"]))
         #print(learned_action)
         energy_used_tot += float(info["energy_used"])
         energy_prod_tot += float(info["energy_prod"])
@@ -84,7 +81,7 @@ def test_and_print_results(folder, iteration, start_test, end_test, title, curr_
     env.render(tot_rew, title, energy_used_tot, accuracy)
     return path
 
-def training_PPO(start_train_date, end_train_date):
+def training_PPO():
     config = ppo.DEFAULT_CONFIG.copy()
     config["observation_filter"] = 'MeanStdFilter'
     config["batch_mode"] = "complete_episodes"
@@ -93,8 +90,8 @@ def training_PPO(start_train_date, end_train_date):
     config["env_config"] = {
         "settings": settings,
         "main_path": curr_path,
-        "start_train": start_train_date,
-        "end_train": end_train_date,
+        "start_train": start_train,
+        "end_train": end_train,
         "train/test": "train",
         "sc_volt_start_train": sc_volt_train,
     }
@@ -116,7 +113,7 @@ def training_PPO(start_train_date, end_train_date):
     proc = subprocess.Popen("rm -r " + save_agent_folder + "/*", stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
     sleep(0.5)
-    # Save new Agent into Agents_Saved==
+    # Save new Agent into Agents_Saved
     proc = subprocess.Popen("cp -r /home/" + getpass.getuser() + "/ray_results/" + folder + " " + save_agent_folder, stdout=subprocess.PIPE, shell=True)
     sleep(0.5)
 
@@ -127,15 +124,15 @@ def cores_available(): # Find number of cores available in the running system
 
 if __name__ == "__main__":
 
-    print("RL Agent")
+    print("Low Level Agent")
     register_env("simplePible", lambda config: SimplePible(config))
 
     # Use the following settings
-    with open('settings.json', 'r') as f:
+    with open('settings_low_level_agent.json', 'r') as f:
         settings = json.load(f)
 
     title = settings[0]["title"]
-    train_test_real = settings[0]["train/test/real"]
+    train_test = settings[0]["train/test"]
     fold = settings[0]["agent_saved_folder"]
     num_cores = settings[0]["num_cores"]
     if num_cores == "max":
@@ -151,23 +148,20 @@ if __name__ == "__main__":
 
     ray.init()
 
-    if  train_test_real == "train" or train_test_real == "test":
-        start_train_date = datetime.datetime.strptime(settings[0]["start_train"], '%m/%d/%y %H:%M:%S')
-        end_train_date = datetime.datetime.strptime(settings[0]["end_train"], '%m/%d/%y %H:%M:%S')
-        start_test_date = datetime.datetime.strptime(settings[0]["start_test"], '%m/%d/%y %H:%M:%S')
-        end_test_date = datetime.datetime.strptime(settings[0]["end_test"], '%m/%d/%y %H:%M:%S')
-    elif train_test_real == "real":
-        now = datetime.datetime.now()
-        #real_start_training_days = settings[0]["real_start_training_days"]
-        start_train_date = now - datetime.timedelta(days=int(settings[0]["real_start_train_days"]))
-        end_train_date = now
-        start_test_date = now
-        end_test_date = now + datetime.timedelta(days=1)
+    start_train = settings[0]["start_train"]
+    end_train = settings[0]["end_train"]
+    start_test = settings[0]["start_test"]
+    end_test = settings[0]["end_test"]
+
+    start_train_date = datetime.datetime.strptime(start_train, '%m/%d/%y %H:%M:%S')
+    end_train_date = datetime.datetime.strptime(end_train, '%m/%d/%y %H:%M:%S')
+    start_test_date = datetime.datetime.strptime(start_test, '%m/%d/%y %H:%M:%S')
+    end_test_date = datetime.datetime.strptime(end_test, '%m/%d/%y %H:%M:%S')
 
     while True:
         print("\nStart Training: ", start_train_date, end_train_date)
-        if train_test_real == 'train' or train_test_real == 'real':
-            training_PPO(start_train_date, end_train_date)
+        if train_test != 'test':
+            training_PPO()
 
         #start_test = start_train
         #end_test = end_train

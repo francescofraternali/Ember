@@ -20,25 +20,19 @@ class SimplePible(gym.Env):
     def __init__(self, config):
 
         settings = config["settings"]
-        file_light = settings[0]["file_light"]
+        path_light = settings[0]["path_light_data"]
         self.light_div = float(settings[0]["light_divider"])
-        self.path_light_data = config["main_path"] + "/" + file_light
+        self.path_light_data = config["main_path"] + "/" + path_light
         self.train = config["train/test"]
 
         if self.train == "train":
-            #start_data_date = datetime.datetime.strptime(config["start_train"], '%m/%d/%y %H:%M:%S')
-            start_data_date = config["start_train"]
-            #self.end_data_date = datetime.datetime.strptime(config["end_train"], '%m/%d/%y %H:%M:%S')
+            start_data_date = datetime.datetime.strptime(config["start_train"], '%m/%d/%y %H:%M:%S')
+            self.end_data_date = datetime.datetime.strptime(config["end_train"], '%m/%d/%y %H:%M:%S')
             self.start_sc = config["sc_volt_start_train"]
-            self.end_data_date = config["end_train"]
-        elif self.train == "test":
+        else:
             start_data_date = datetime.datetime.strptime(config["start_test"], '%m/%d/%y %H:%M:%S')
             self.end_data_date = datetime.datetime.strptime(config["end_test"], '%m/%d/%y %H:%M:%S')
             self.start_sc = config["sc_volt_start_test"]
-        elif self.train == "real":
-            Ember_RL_func.sync_input_data(pwd, bs_name, file_light, destination)
-            last_row = Ember_RL_func.last_valid_row(file_light)
-            start_data_date = datetime.datetime.strptime(last_row, '%m/%d/%y %H:%M:%S')
 
         #self.time = datetime.datetime.strptime("04/15/20 00:00:00", '%m/%d/%y %H:%M:%S')
         self.time = start_data_date
@@ -61,11 +55,7 @@ class SimplePible(gym.Env):
                         checker = datetime.datetime.strptime(line_split[0], '%m/%d/%y %H:%M:%S')
                         if start_data_date <= checker and checker <= self.end_data_date:
                             self.file_data.append(line)
-        try:
-            line = self.file_data[0].split('|')
-        except:
-            print("Data selected not correct, check problem.")
-            exit()
+        line = self.file_data[0].split('|')
         self.light = int(int(line[8])/self.light_div)
         self.temp = float(line[2])
         self.hum = float(line[3])
@@ -130,7 +120,7 @@ class SimplePible(gym.Env):
 
         #reward = Pible_func.reward_func_low_level(self.mode, PIR_event_det, PIR_event_miss, thpl_event_det, thpl_event_miss, self.PIR_on_off, self.thpl_on_off, self.SC_Volt_array)
 
-        reward = get_reward_low_level(en_prod, en_used, PIR_event_det, PIR_event_miss, thpl_event_det, thpl_event_miss, self.PIR_on_off, self.thpl_on_off, self.SC_Volt_array)
+        reward = Ember_RL_func.reward_low_level(en_prod, en_used, PIR_event_det, PIR_event_miss, thpl_event_det, thpl_event_miss, self.PIR_on_off, self.thpl_on_off, self.SC_Volt_array)
 
         len_dict_event = np.array([len(self.PIR_events_found_dict)])
         if self.train == 'test':
@@ -163,7 +153,6 @@ class SimplePible(gym.Env):
         #info["death_days"] = self.death_days
         #info["death_min"] = self.death_min
         info["SC_volt"] = SC_temp
-        info["state_transition"] = self.next_wake_up_time
 
         #return (self.hour_array, self.minute_array, self.SC_Volt_array, self.week_end), reward, done, info
         return (self.hour_array, self.minute_array, self.light_array, self.SC_Volt_array, self.week_end), reward, done, info
@@ -178,21 +167,3 @@ class SimplePible(gym.Env):
                                        self.Reward, self.SC_Volt, self.PIR_event_det_hist, self.PIR_event_miss_hist,
                                        self.thpl_event_det_hist, self.thpl_event_miss_hist, tot_rew, self.PIR_tot_events_detect,
                                        self.PIR_tot_events, self.Len_Dict_Events, title, energy_used, accuracy)
-
-    def get_reward_low_level(self, en_prod, en_used, PIR_event_det, PIR_event_miss, thpl_event_det,
-                   thpl_event_miss, PIR_on_off, thpl_on_off, SC_Volt_array):
-        reward = 0
-
-        reward += 0.01 * (PIR_event_det + thpl_event_det)
-
-        reward -= 0.01 * (PIR_event_miss + thpl_event_miss)
-
-        reward -= 0.1*en_used
-
-        #if thpl_on_off == 1 and thpl_event_det == 0:
-        #    reward -= 0.001
-
-        if SC_Volt_array[0] <= SC_volt_die:
-            reward = -1 #-1
-
-        return reward

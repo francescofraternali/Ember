@@ -7,6 +7,24 @@ import json
 
 #from training_pible import light_divider
 
+def reward_low_level(en_prod, en_used, PIR_event_det, PIR_event_miss, thpl_event_det,
+               thpl_event_miss, PIR_on_off, thpl_on_off, SC_Volt_array):
+    reward = 0
+
+    reward += 0.01 * (PIR_event_det + thpl_event_det)
+
+    reward -= 0.01 * (PIR_event_miss + thpl_event_miss)
+
+    reward -= 0.1*en_used
+
+    #if thpl_on_off == 1 and thpl_event_det == 0:
+    #    reward -= 0.001
+
+    if SC_Volt_array[0] <= SC_volt_die:
+        reward = -1 #-1
+
+    return reward
+
 def build_inputs(time, light, sc_volt, num_hours_input, num_minutes_input,  num_light_input, num_sc_volt_input):
     list = []
     for i in range(0, num_hours_input):
@@ -142,80 +160,5 @@ def find_agent_saved(path):
     iteration = (int(iter_str[:-1])* 10)
     print("Best checkpoint found:", iteration, ". Mean Reward Episode: ", round(max_mean, 3), ". Min Rew Episode", round(dict['episode_reward_min'], 3))
 
+
     return folder, iteration
-
-class Command(object):
-    def __init__(self, cmd):
-        self.cmd = cmd
-        self.process = None
-        self.stdout = None
-        self.stderr = None
-
-    def run(self, timeout):
-        def target():
-            #print('Thread started')
-            self.process = Popen(self.cmd,  stdout=PIPE, stderr=PIPE, shell=True)
-            self.stdout, self.stderr = self.process.communicate()
-            #print('Thread finished')
-
-        thread = threading.Thread(target=target)
-        thread.start()
-
-        thread.join(timeout)
-        try:
-            if thread.is_alive():
-                #print('Terminating process')
-                self.process.terminate()
-                thread.join()
-        except:
-            print("something wrong in the process. Maybe it was already terminated?")
-
-        return self.stdout, self.stderr, self.process.returncode
-
-
-def checker(message, timeout):
-    global check_max
-    command = Command(message)
-    for i in range(0, check_max):
-        #try:
-        (out, err, check) = command.run(timeout=60)
-
-        if check == -15:
-            print("Base Station not answering. Trial num: " + str(i))
-            time.sleep(900)
-        else:
-            break
-
-    if check == -15:
-        #check_max += 10
-        message = "Base station not aswering, something wrong, resetting base station..."
-        print(message)
-
-    else:
-        check_max = 5
-
-    return out, check
-
-def sync_input_data(pwd, bs_name, File_name, destination):
-    #proc = subprocess.Popen("sshpass -p " + pwd +" scp -r -o StrictHostKeyChecking=no "+bs_name+":/home/pi/BLE_GIT/Data/"+File_name+" .", stdout=subprocess.PIPE, shell=True)
-    #command = "sshpass -p " + pwd +" scp -r -o StrictHostKeyChecking=no "+bs_name+":/home/pi/BLE_GIT/Data/" + File_name + " Temp_"+ File_name
-    command = "sshpass -p {0} scp -r -o StrictHostKeyChecking=no {1}:/home/pi/Base_Station_20/Data/{2} {3}Temp_{2}".format(pwd, bs_name, File_name, destination)
-    out, check = checker(command, 60)
-
-    if check == 0: #Everything went right
-        with open(destination + File_name, 'ab') as outfile:
-            with open(destination + "Temp_" + File_name, 'rb') as infile:
-                outfile.write(infile.read())
-
-        #print("Removing file ...")
-        time.sleep(0.5)
-        #command ="sshpass -p " + val + " ssh " + key +" rm /home/pi/BLE_GIT/Data/"+ file
-        #command = "sshpass -p " + pwd +" ssh " + bs_name + " rm /home/pi/BLE_GIT/Data/" + File_name
-        command = "sshpass -p {0} ssh {1} rm /home/pi/Base_Station_20/Data/{2}".format(pwd, bs_name, File_name)
-        out, check = checker(command, 60)
-        #command = "rm Temp_" + File_name
-        command = "rm {1}Temp_{0}".format(File_name, destination)
-        out, check = checker(command, 60)
-        print("Merge OK")
-    elif check == 1:
-        print("No new file to merge. Check Check Check.")
