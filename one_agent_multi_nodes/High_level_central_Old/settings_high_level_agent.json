@@ -1,0 +1,20 @@
+[
+  {
+    "title": "Middle of an Office High Level Agent. Events Detected: ",
+    "path_light_data": "Fake_Input.txt",
+    "agent_saved_folder": "",
+    "timesteps_total": 5e4,
+    "training_iterations": 30,
+    "light_divider": "2.2",
+    "train/test": "",
+    "start_with_restore_train": "no",
+    "start_train": "10/7/19 00:00:00",
+    "end_train": "10/14/19 00:00:00",
+    "time_train": 168,
+    "size_train_max": 672,
+    "sc_volt_start_train": "3.2",
+    "sc_volt_start_test": "3.2",
+    "time_test": 168,
+    "repeat": 1
+}
+]
