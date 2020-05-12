@@ -2,6 +2,7 @@ import datetime
 import numpy as np
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+from time import sleep
 
 # Parameters to change
 SC_volt_die = 3.0 # Voltage at which the simulator consider the node death
@@ -12,6 +13,7 @@ using_Accelerometer = False # Activate only if using Accelerometer
 
 # RL Parameters
 episode_lenght = 1 # in days
+light_max = 1000
 
 # DO NOT MODIFY! POWER CONSUMPTION PARAMETERS! Change them only if you change components.
 SC_volt_min = 2.3; SC_volt_max = 5.5; SC_size = 1.5; SC_volt_die = 3.0
@@ -124,10 +126,12 @@ def light_event_func(t_now, next_wake_up_time, mode, PIR_on_off, PIR_events_foun
             t_diff = int((check_time - old_time).total_seconds()/60)
             no_event = 1 if t_diff >= 60 else 0
 
-            #print(t_now, next_wake_up_time, check_time)
+            print(t_now, next_wake_up_time, check_time, t_diff, no_event)
 
             if t_now <= check_time and check_time < next_wake_up_time:
-                light_buff.append(int(int(splitted[8])/light_div))
+                light_t = int(splitted[8])
+                light_t = light_max if light_t > light_max else light_t
+                light_buff.append(int(int(light_t)/light_div))
                 PIR = int(splitted[6])
                 PIR_event_gt += PIR
 
@@ -150,7 +154,65 @@ def light_event_func(t_now, next_wake_up_time, mode, PIR_on_off, PIR_events_foun
         light = sum(light_buff)/len(light_buff)
 
         #print(t_now, check_time, next_wake_up_time, t_diff, thpl_event_gt)
-        #print("exit")
+        print("exit", thpl_event_gt)
+
+        return light, PIR_event_gt, PIR_events_found_dict, thpl_event_gt, data_pointer
+
+def light_event_func_new(t_now, next_wake_up_time, mode, PIR_on_off, PIR_events_found_dict, light_prev, light_div, file_data, data_pointer): # check how many events are on this laps of time
+        #time_buff = []; light_buff = []; PIR_buff = []; temp_buff = []; hum_buff = []; press_buff = []
+        light_buff = [];
+        PIR_event_gt = 0; event_found = 0
+        thpl_event_gt = 0
+        hold = 0; no_event = 0
+
+        #with open(path_light_data, 'r') as f:
+        #    file_data = f.readlines()
+        #print(data_pointer)
+        for i in range(data_pointer, len(file_data)):
+            PIR = 0
+            line_split = file_data[i].split("|")
+            if file_data[i] != '\n':
+                try:
+                    test = 0; test += float(line_split[2]); test += float(line_split[4]); test += float(line_split[10])
+                except:
+                    continue
+                if test > 0: # Data read is valid
+                    check_time = datetime.datetime.strptime(line_split[0], '%m/%d/%y %H:%M:%S')
+                    if hold == 0:
+                        old_time = check_time
+                    t_diff = int((check_time - old_time).total_seconds()/60)
+                    no_event = 1 if t_diff >= 60 else 0
+
+                    #print(t_now, next_wake_up_time, check_time, data_pointer, t_diff, no_event)
+
+                    if t_now <= check_time and check_time < next_wake_up_time:
+                        light_t = int(line_split[8])
+                        light_t = light_max if light_t > light_max else light_t
+                        light_buff.append(int(int(light_t)/light_div))
+                        PIR = int(line_split[6])
+                        PIR_event_gt += PIR
+
+                        if PIR == 0 and no_event == 0 and hold != 0:
+                            thpl_event_gt += 1
+
+                    #if (mode == 1 or mode == 2) and PIR > 0 and PIR_on_off > 0:
+                    #    if check_time.time() not in PIR_events_found_dict:
+                    #        PIR_events_found_dict.append(check_time.time())
+                    if check_time >= next_wake_up_time:
+                        data_pointer = i
+                        break
+
+                    old_time = check_time
+                    hold = 1
+
+        if len(light_buff) == 0:
+            light_buff = [light_prev]
+
+        light = sum(light_buff)/len(light_buff)
+
+        #print(t_now, next_wake_up_time, thpl_event_gt)
+        #print("exit", thpl_event_gt, data_pointer)
+        #sleep(5)
 
         return light, PIR_event_gt, PIR_events_found_dict, thpl_event_gt, data_pointer
 
@@ -204,7 +266,8 @@ def plot_hist_low_level(Time, Light, Mode, Sens_OnOff, State_Trans, Reward,
     plt.plot(Time, SC_Volt, 'm.', label = 'SC Voltage', markersize = 10)
     plt.ylabel('SC [V]\nVolt', fontsize=15)
     #plt.legend(loc=9, prop={'size': 10})
-    plt.ylim(2.3, 3.7)
+    #plt.ylim(2.3, 3.7)
+    plt.ylim(2.7, 5.6)
     ax3.set_xticklabels([])
     plt.grid(True)
 

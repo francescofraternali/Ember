@@ -4,27 +4,126 @@ import datetime
 from time import sleep
 import subprocess
 import json
+import threading
+from subprocess import PIPE, Popen, call
+import random
 
 #from training_pible import light_divider
+check_max = 5
 
-def build_inputs(time, light, sc_volt, num_hours_input, num_minutes_input,  num_light_input, num_sc_volt_input):
+def select_input_data(path_light_data, start_data_date, end_data_date):
+    file_data = []
+    #for line in reversed(list(open(path_light_data))):
+    for line in list(open(path_light_data)):
+        #print("line", line)
+        line_split = line.split("|")
+        if line != '\n':
+            try:
+                test = 0; test += float(line_split[2]); test += float(line_split[4]); test += float(line_split[10])
+            except:
+                continue
+            if test > 0:
+                checker = datetime.datetime.strptime(line_split[0], '%m/%d/%y %H:%M:%S')
+                #last = line_split
+                #light = int(line_split[8])
+                #light = light_max if light > light_max else light
+                #volt = (float(line_split[5]) * SC_volt_max) / 100
+                #last_light_list = np.roll(last_light_list, 1); last_light_list[0] = light
+                #last_volt_list = np.roll(last_volt_list, 1); last_volt_list[0] = volt
+                if start_data_date <= checker and checker <= end_data_date:
+                    file_data.append(line)
+                    #break
+    if len(file_data) == 0:
+        print("No new rows found")
+
+    return file_data
+
+def select_input_data_new(path_light_data, start_data_date, end_data_date):
+    file_data = []
+    #for line in reversed(list(open(path_light_data))):
+    for i, line in enumerate(list(open(path_light_data))):
+        #print("line", line)
+        line_split = line.split("|")
+        if line != '\n':
+            try:
+                test = 0; test += float(line_split[2]); test += float(line_split[4]); test += float(line_split[10])
+            except:
+                continue
+            if test > 0:
+                checker = datetime.datetime.strptime(line_split[0], '%m/%d/%y %H:%M:%S')
+                if start_data_date <= checker and checker < end_data_date:
+                    file_data.append(line)
+                    #break
+                if checker >= end_data_date:
+                    #data_pointer = i
+                    break
+    if len(file_data) == 0:
+        #print("No new rows found")
+        pass
+    #data_pointer -= len(file_data)
+
+    return file_data
+
+def select_input_starter(path_light_data, start_data_date, num_light_input, num_sc_volt_input):
+
+    start_light_list = [0] * num_light_input
+    start_volt_list = [SC_volt_die] * num_sc_volt_input
+    count_light = 0; count_volt = 0
+    starter_data = []
+
+    for line in reversed(list(open(path_light_data))):
+        #for line in list(open(path_light_data)):
+        #print("line", line)
+        line_split = line.split("|")
+        if line != '\n':
+            try:
+                test = 0; test += float(line_split[2]); test += float(line_split[4]); test += float(line_split[10])
+            except:
+                continue
+            if test > 0:
+                checker = datetime.datetime.strptime(line_split[0], '%m/%d/%y %H:%M:%S')
+                #print(checker, start_data_date)
+                if checker <= start_data_date:
+                    #print(count_light, count_volt)
+                    starter_data.append(line)
+                    if count_light < num_light_input:
+                        light = int(line_split[8])
+                        light = light_max if light > light_max else light
+                        start_light_list[count_light] = light
+                        count_light += 1
+
+                    if count_volt < num_sc_volt_input:
+                        volt = (float(line_split[5]) * SC_volt_max) / 100
+                        start_volt_list[count_volt] = round(volt, 2)
+                        count_volt += 1
+
+                    #print(start_light_list, start_volt_list)
+
+                    if count_volt >= num_sc_volt_input and count_light >= num_light_input:
+                        break
+
+    return start_light_list, start_volt_list, starter_data
+
+def build_inputs(time, sc_volt, num_hours_input, num_minutes_input, last_light_list, last_volt_list):
     list = []
     for i in range(0, num_hours_input):
-        value = time - datetime.timedelta(hours=1)
+        #value = time - datetime.timedelta(hours=1)
+        list.append(time.hour)
         time = time - datetime.timedelta(hours=1)
-        list.append(value.hour)
+        #list.append(value.hour)
     hour_array = np.array(list)
 
     list = []
     for i in range(0, num_minutes_input):
-        value = time - datetime.timedelta(minutes=1)
+        #value = time - datetime.timedelta(minutes=1)
+        list.append(time.minute)
         time = time - datetime.timedelta(minutes=1)
-        list.append(value.minute)
+        #list.append(value.minute)
     minute_array = np.array(list)
 
-    light_array = np.array([0] * num_light_input)
+    light_array = np.array(last_light_list)
 
-    sc_array = np.array([sc_volt] * num_sc_volt_input)
+    sc_array = np.array(last_volt_list)
 
     return hour_array, minute_array, light_array, sc_array
 
@@ -37,16 +136,18 @@ def updates_arrays(hour_array, minute_array, light_array, SC_Volt_array, time, l
 
     list = []
     for i in range(0, 24):
-        value = time - datetime.timedelta(hours=1)
+        #value = time - datetime.timedelta(hours=1)
+        list.append(time.hour)
         time = time - datetime.timedelta(hours=1)
-        list.append(value.hour)
+        #list.append(value.hour)
     hour_array = np.array(list)
 
     list = []
     for i in range(0, 60):
-        value = time - datetime.timedelta(minutes=1)
+        list.append(time.minute)
+        #value = time - datetime.timedelta(minutes=1)
         time = time - datetime.timedelta(minutes=1)
-        list.append(value.minute)
+        #list.append(value.minute)
     minute_array = np.array(list)
 
     light_array = np.roll(light_array, 1)
@@ -182,7 +283,7 @@ def checker(message, timeout):
 
         if check == -15:
             print("Base Station not answering. Trial num: " + str(i))
-            time.sleep(900)
+            sleep(900)
         else:
             break
 
@@ -208,7 +309,7 @@ def sync_input_data(pwd, bs_name, File_name, destination):
                 outfile.write(infile.read())
 
         #print("Removing file ...")
-        time.sleep(0.5)
+        sleep(0.5)
         #command ="sshpass -p " + val + " ssh " + key +" rm /home/pi/BLE_GIT/Data/"+ file
         #command = "sshpass -p " + pwd +" ssh " + bs_name + " rm /home/pi/BLE_GIT/Data/" + File_name
         command = "sshpass -p {0} ssh {1} rm /home/pi/Base_Station_20/Data/{2}".format(pwd, bs_name, File_name)
@@ -219,3 +320,55 @@ def sync_input_data(pwd, bs_name, File_name, destination):
         print("Merge OK")
     elif check == 1:
         print("No new file to merge. Check Check Check.")
+
+
+def sync_action(file, action): # Now Let's update the action to the action file
+    act_1, act_2 = action_decode(action)
+    with open(file, 'r') as f:
+        dic = json.load(f)
+
+    act_3 = dic["Action_3"]
+    dic["Action_1"] = act_1
+    dic["Action_2"] = act_2
+    dic["Action_3"] = act_3
+
+    with open(file, 'w') as f:
+        json.dump(dic, f)
+
+def action_decode(action): # Action_1 = PIR_onoff + State_transition; Action_2 = Sensing sensitivity
+    if len(action) < 3:
+        PIR = int(action[0])
+        thpl = int(action[1])
+        if PIR == 0 and thpl == 0: # everything off
+            Action_1 = '3C'; Action_2 = '01'
+        elif PIR == 1 and thpl == 0:
+            Action_1 = 'BC'; Action_2 = '01'
+        elif PIR == 0 and thpl == 1:
+            Action_1 = '3C'; Action_2 = '0B'
+        elif PIR == 1 and thpl == 1:
+            Action_1 = 'BC'; Action_2 = '0B'
+
+    return Action_1, Action_2
+
+def sync_ID_file_to_BS(pwd, bs_name, file_local_address, destination):
+
+    call("sshpass -p " + pwd + " scp -r -o StrictHostKeyChecking=no " + file_local_address + " " + bs_name + ":" + destination, shell=True)
+
+    '''
+        if run == 0:
+            send_email("Something wrong while synching actions. Check!")
+    '''
+
+def add_random_volt(SC_Volt_array):
+    v_min = round(SC_Volt_array[0] - SC_volt_die - 0.1, 1)
+    v_max = round(SC_volt_max - SC_Volt_array[0] - 0.1, 1)
+    #print(-v_min, v_max)
+    k = round(random.uniform(-v_min, v_max), 1)
+    #print("before ", SC_Volt_array)
+    SC_Volt_array = [round(x + k , 2) for x in SC_Volt_array]
+    for i in range(len(SC_Volt_array)):
+        SC_Volt_array[i] = SC_volt_max if SC_Volt_array[i] > SC_volt_max else SC_Volt_array[i]
+        SC_Volt_array[i] = SC_volt_die if SC_Volt_array[i] < SC_volt_die else SC_Volt_array[i]
+    #print(k, SC_Volt_array)
+
+    return SC_Volt_array
