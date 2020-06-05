@@ -1,9 +1,6 @@
 """ Hierarchical RL for Pible
 You can visualize experiment results in ~/ray_results using TensorBoard.
 """
-import starter
-from time import sleep
-sleep(1)
 import numpy as np
 import gym
 from ray.tune.logger import pretty_print
@@ -15,18 +12,18 @@ from Pible_param_func import *
 from Pible_class_low_level_agent import SimplePible
 import Ember_RL_func
 import datetime
+from time import sleep
 import os
+import subprocess
 import glob
 from ray.rllib.agents import ppo
 from ray.tune.registry import register_env
+import multiprocessing
 import getpass
-import sys
 
-
-def test_and_print_results(agent_folder, iteration, start_date, end_date, title, curr_path, sc_volt_test, train_test_real, diff_days):
+def test_and_print_results(folder, iteration, start_date, end_date, title, curr_path, sc_volt_test, train_test_real):
     train_test_real = 'test' if train_test_real == 'train' else train_test_real
-    path = glob.glob(agent_folder + '/checkpoint_' + str(iteration) + '/checkpoint-' + str(iteration), recursive=True)
-
+    path = glob.glob(save_agent_folder + folder  + '/checkpoint_' + str(iteration) + '/checkpoint-' + str(iteration), recursive=True)
     config = ppo.DEFAULT_CONFIG.copy()
     config["observation_filter"] = 'MeanStdFilter'
     config["batch_mode"] = "complete_episodes"
@@ -39,40 +36,45 @@ def test_and_print_results(agent_folder, iteration, start_date, end_date, title,
        "start_test": start_date,
        "end_test": end_date,
        "sc_volt_start_test": sc_volt_test,
-       "diff_days": diff_days,
     }
     if train_test_real == "real":
-        #Ember_RL_func.sync_input_data(settings[0]["pwd"], settings[0]["bs_name"], settings[0]["file_light"], "")
-        fold = os.path.basename(os.getcwd())
-        ID_temp = fold.split('_')[-1]
-        action_file = ID_temp + "_action.json"
+        Ember_RL_func.sync_input_data(settings[0]["pwd"], settings[0]["bs_name"], settings[0]["file_light"], "")
+        file_light = settings[0]["file_light"]
+        ID_temp = file_light.split('_')[-1]
+        action_file = ID_temp.replace('.txt','_action.json')
 
     agent = ppo.PPOTrainer(config=config, env="simplePible")
     agent.restore(path[0])
     env = SimplePible(config["env_config"])
     obs = env.reset()
     tot_rew = 0;  energy_used_tot = 0;  energy_prod_tot = 0
-    print("initial observations: ", obs)
     while True:
-
+        #action_0_list = []; action_1_list = []
+        #for i in range(0, 20):
         learned_action = agent.compute_action(
                 observation = obs,
         )
+
+        #    action_0_list.append(learned_action[0][0])
+        #    action_1_list.append(learned_action[1][0][0])
+        #action_0_select = max(set(action_0_list), key = action_0_list.count)
+        #action_1_select = max(set(action_1_list), key = action_1_list.count)
+        #learned_action = [action_0_select, action_1_select]
+        print("action_taken: ", learned_action)
+
         if train_test_real == "real":
-            Ember_RL_func.sync_action(action_file, learned_action, settings[0]["PIR_or_thpl"])
+            Ember_RL_func.sync_action(action_file, learned_action)
             Ember_RL_func.sync_ID_file_to_BS(settings[0]["pwd"], settings[0]["bs_name"], action_file, "/home/pi/Base_Station_20/ID/")
-            print("action_taken: ", learned_action)
-            if isinstance(learned_action, list):
-                print("sleeping " + str(learned_action[0][1]) + " mins decided by RL")
+            if len(learned_action) > 2:
+                print("sleeping " + str(learned_action[0][1]) + " mins")
                 sleep(int(learned_action[0][1]) * 60)
             else:
-                print("sleeping fixed " + str(60) + " mins")
+                print("sleeping " + str(60) + " mins")
                 sleep(60 * 60)
             Ember_RL_func.sync_input_data(settings[0]["pwd"], settings[0]["bs_name"], settings[0]["file_light"], "")
 
         obs, reward, done, info = env.step(learned_action)
-        print(obs)
-        print(learned_action, reward, info["thpl_tot_events"])
+        print(obs, reward, done, info)
 
         energy_used_tot += float(info["energy_used"])
         energy_prod_tot += float(info["energy_prod"])
@@ -100,7 +102,7 @@ def test_and_print_results(agent_folder, iteration, start_date, end_date, title,
         env.render(tot_rew, title, energy_used_tot, accuracy)
     return path
 
-def training_PPO(start_train_date, end_train_date, resume, diff_days):
+def training_PPO(start_train_date, end_train_date, resume):
     config = ppo.DEFAULT_CONFIG.copy()
     config["observation_filter"] = 'MeanStdFilter'
     config["batch_mode"] = "complete_episodes"
@@ -113,9 +115,9 @@ def training_PPO(start_train_date, end_train_date, resume, diff_days):
         "end_train": end_train_date,
         "train/test": "train",
         "sc_volt_start_train": sc_volt_train,
-        "diff_days": diff_days,
     }
     trainer = ppo.PPOTrainer(config=config, env="simplePible")
+    max_min = -10000
 
     if resume_path != "":
         print("Restoring checkpoint: ", resume)
@@ -127,28 +129,32 @@ def training_PPO(start_train_date, end_train_date, resume, diff_days):
         print(pretty_print(result))
 
         if int(result["training_iteration"]) % 10 == 0:
-        #if max_min > int(result["episode_reward_mean"])
+        #if max_min > int(result["episode_reward_min"])
             checkpoint = trainer.save()
             print("checkpoint saved at", checkpoint)
-            checkp_split = checkpoint.split('/')
-            parent_dir = '/'.join(checkp_split[0:-2])
 
-    # Remove previous agents and save bew agetn into Agents_Saved
-    print("out", parent_dir, save_agent_folder)
-    Ember_RL_func.rm_old_save_new_agent(parent_dir, save_agent_folder)
+    # Find best checkpoint
+    path = subprocess.getoutput('eval echo "~$USER"') + "/ray_results/"
+    folder, iteration = Ember_RL_func.find_agent_saved(path)
+    # Remove previous agents saved into Agents_Saved
+    proc = subprocess.Popen("rm -r " + save_agent_folder + "/*", stdout=subprocess.PIPE, shell=True)
+    (out, err) = proc.communicate()
+    sleep(0.5)
+    # Save new Agent into Agents_Saved==
+    proc = subprocess.Popen("cp -r /home/" + getpass.getuser() + "/ray_results/" + folder + " " + save_agent_folder, stdout=subprocess.PIPE, shell=True)
+    sleep(0.5)
+
+def cores_available(): # Find number of cores available in the running system
+    print("Number of cores available: ", multiprocessing.cpu_count())
+    print("Number of cores to use: ", multiprocessing.cpu_count() - 2)
+    return int(multiprocessing.cpu_count()) - 2
 
 
 
 if __name__ == "__main__":
 
-    print("Starting RL Agent")
-    print("Updating code...")
-
+    print("RL Agent")
     register_env("simplePible", lambda config: SimplePible(config))
-
-    #print("curr path: " , sys.argv[1])
-    #curr_path = sys.argv[1]
-    curr_path = os.getcwd()
 
     # Use the following settings
     with open('settings.json', 'r') as f:
@@ -160,14 +166,15 @@ if __name__ == "__main__":
     num_cores = settings[0]["num_cores"]
     resume_path = ''
     if num_cores == "max":
-        num_cores = Ember_RL_func.cores_available()
+        num_cores = cores_available()
     else:
         num_cores = int(num_cores)
 
     sc_volt_train = float(settings[0]["sc_volt_start_train"])
     sc_volt_test = float(settings[0]["sc_volt_start_test"])
-    train_days = int(settings[0]["real_train_days"])
-    save_agent_folder = curr_path + "/" + fold
+
+    curr_path = os.getcwd()
+    save_agent_folder = curr_path + fold
 
     ray.init()
 
@@ -178,49 +185,39 @@ if __name__ == "__main__":
         start_test_date = datetime.datetime.strptime(settings[0]["start_test"], '%m/%d/%y %H:%M:%S')
         end_test_date = datetime.datetime.strptime(settings[0]["end_test"], '%m/%d/%y %H:%M:%S')
     elif train_test_real == "real":
-        #Ember_RL_func.sync_input_data(settings[0]["pwd"], settings[0]["bs_name"], settings[0]["file_light"], "")
+        Ember_RL_func.sync_input_data(settings[0]["pwd"], settings[0]["bs_name"], settings[0]["file_light"], "")
         now = datetime.datetime.now()
-        start_train_date = now - datetime.timedelta(days=train_days)
+        start_train_date = now - datetime.timedelta(days=int(settings[0]["real_train_days"]))
         end_train_date = now
-
-    diff_days = (end_train_date - start_train_date).days
-    print("Diff days: ", diff_days)
+        start_test_date = now
+        end_test_date = start_test_date + datetime.timedelta(days=1)
 
     while True:
+        print("\nStart Training: ", start_train_date, end_train_date)
         if train_test_real == 'train' or train_test_real == 'real':
-            print("\nStart Training: ", start_train_date, end_train_date)
-            training_PPO(start_train_date, end_train_date, resume_path, diff_days)
+            training_PPO(start_train_date, end_train_date, resume_path)
 
         #start_test = start_train
         #end_test = end_train
         #start_test_date = start_test_date
         #end_test_date = end_test_date
 
-        # Find best checkpoint
-        agent_fold = save_agent_folder + '/' + os.listdir(save_agent_folder)[0]
-        iteration = Ember_RL_func.find_best_checkpoint(agent_fold)
-        #folder, iteration = Ember_RL_func.find_agent_saved(save_agent_folder)
+        # Resume folder and best checkpoint from aget_saved_folder
+        folder, iteration = Ember_RL_func.find_agent_saved(save_agent_folder)
         #iteration = 30
-        if train_test_real == "real":
-            start_test_date = datetime.datetime.now()
-            end_test_date = start_test_date + datetime.timedelta(days=1)
 
         print("\nStart Testing: ", start_test_date, end_test_date)
-        resume_path = test_and_print_results(agent_fold, iteration, start_test_date, end_test_date, title, curr_path, sc_volt_test, train_test_real, diff_days)
+        resume_path = test_and_print_results(folder, iteration, start_test_date, end_test_date, title, curr_path, sc_volt_test, train_test_real)
         resume_path = resume_path[0]
 
         if train_test_real == 'real':
             Ember_RL_func.sync_input_data(settings[0]["pwd"], settings[0]["bs_name"], settings[0]["file_light"], "")
             now = datetime.datetime.now()
-            train_days += 1
-            if train_days > int(settings[0]["real_train_max"]):
-                train_days = int(settings[0]["real_train_max"])
-
-            start_train_date = now - datetime.timedelta(days=train_days)
+            start_train_date = now - datetime.timedelta(days=int(settings[0]["real_train_days"]))
             end_train_date = now
             start_test_date = now
             end_test_date = start_test_date + datetime.timedelta(days=1)
         else:
             break
 
-    print("Done Done")
+    print("Done")

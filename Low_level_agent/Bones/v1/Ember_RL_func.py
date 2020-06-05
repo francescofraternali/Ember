@@ -12,19 +12,6 @@ import multiprocessing
 #from training_pible import light_divider
 check_max = 5
 
-def gt_mode_hours(volt):
-    if volt >= 90:
-        hours = 18
-    elif volt >=80 and volt < 90:
-        houra = 12
-    elif volt >=70 and volt < 80:
-        hours = 6
-    elif volt >= 60 and volt < 70:
-        hours = 0
-    else:
-        hours = 0
-
-    return hours
 
 def valid_line(line):
     #print(line)
@@ -100,7 +87,7 @@ def select_input_starter(path_light_data, start_data_date, num_light_input, num_
 
     return start_light_list, start_volt_list, starter_data
 
-def build_inputs(time, num_hours_input, num_minutes_input, last_light_list, last_volt_list):
+def build_inputs(time, sc_volt, num_hours_input, num_minutes_input, last_light_list, last_volt_list):
     list = []
     for i in range(0, num_hours_input):
         #value = time - datetime.timedelta(hours=1)
@@ -124,11 +111,11 @@ def build_inputs(time, num_hours_input, num_minutes_input, last_light_list, last
     return hour_array, minute_array, light_array, sc_array
 
 def updates_arrays(hour_array, minute_array, light_array, SC_Volt_array, time, light, SC_temp):
-    #hour_array = np.roll(hour_array, 1)
-    #hour_array[0] = time.hour
+    hour_array = np.roll(hour_array, 1)
+    hour_array[0] = time.hour
 
-    #minute_array = np.roll(minute_array, 1)
-    #minute_array[0] = time.minute
+    minute_array = np.roll(minute_array, 1)
+    minute_array[0] = time.minute
 
     list = []
     for i in range(0, 24):
@@ -266,13 +253,13 @@ def find_last_checkpoint(path, parent_dir):
 
 def find_best_checkpoint(path):  # Find best checkpoint
 
-    best_mean = - 10000
+    max_mean = - 10000
     #tot_iterations = iteration
 
     for count, line in enumerate(open(path + "/result.json", 'r')):
         dict = json.loads(line)
         #print(count, int(tot_iterations/2))
-        if round(dict['episode_reward_mean'], 3) >= best_mean: #and count > int(tot_iterations/2):
+        if round(dict['episode_reward_mean'], 3) >= max_mean: #and count > int(tot_iterations/2):
             best_mean = round(dict['episode_reward_mean'], 3)
             max = round(dict['episode_reward_max'], 3)
             min = round(dict['episode_reward_min'], 3)
@@ -388,8 +375,6 @@ def sync_action(file, action, pir_or_thpl): # Now Let's update the action to the
     dic["Action_2"] = act_2
     dic["Action_3"] = act_3
 
-    print("pir_or_thpl: ", pir_or_thpl, ". Written Act_1, Act_2, Act_3: ", act_1, act_2, act_3)
-
     with open(file, 'w') as f:
         json.dump(dic, f)
 
@@ -400,9 +385,11 @@ def action_encode(action, pir_or_thpl): # Action_1 = PIR_onoff + State_transitio
         thpl = int(action[1])
     else:
         if pir_or_thpl == '0':
-            PIR = action; thpl = 0
+            PIR = 1
+            thpl = 0
         elif pir_or_thpl == '1':
-            PIR = 0; thpl = action
+            PIR = 0
+            thpl = 1
 
     if PIR == 0 and thpl == 0: # everything off
         Action_1 = '3C'; Action_2 = '01'
@@ -437,17 +424,3 @@ def add_random_volt(SC_Volt_array):
     #print(k, SC_Volt_array)
 
     return SC_Volt_array
-
-def adjust_sc_voltage(list, start_sc):
-    new_list = []
-    for i in range(0, len(list)):
-        if i == 0:
-            new_list.append(start_sc)
-        else:
-            new_list.append(start_sc + (list[i] - list[0]))
-
-    for i in range(len(new_list)):
-        new_list[i] = SC_volt_max if new_list[i] > SC_volt_max else new_list[i]
-        new_list[i] = SC_volt_min if new_list[i] < SC_volt_min else new_list[i]
-
-    return new_list

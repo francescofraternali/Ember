@@ -7,6 +7,8 @@ from time import sleep
 # Parameters to change
 SC_volt_die = 3.0 # Voltage at which the simulator consider the node death
 SC_begin = 4.0 # Super Capacitor initial voltage level. Put a number between 5.4 (i.e. max) and 2.3 (i.e. min)
+using_PIR = True # PIR active and used to detect people
+PIR_events = 100 # Number of PIR events detected during a day. This could happen also when light is not on
 using_Accelerometer = False # Activate only if using Accelerometer
 
 # RL Parameters
@@ -18,22 +20,32 @@ SC_volt_min = 2.3; SC_volt_max = 5.5; SC_size = 1.5; SC_volt_die = 3.0
 
 # Board and Components Consumption
 i_sleep = 0.0000032;
-#i_sens =  0.0003; time_sens = 0.2
-i_sens =  0.00099; time_sens = 0.2
+i_sens =  0.000100; time_sens = 0.2
 i_PIR_detect = 0.000102; time_PIR_detect = 2.5
 i_accel_sens = 0.0026; accel_sens_time = 0.27
 #i_sleep_PIR = i_sleep + 0.000001 # original
 #i_sleep_PIR = i_sleep + 0.0001
 i_sleep_PIR = i_sleep + 0.000001
 
+'''
+if using_PIR == True:
+#    i_sleep += 0.000001
+    if PIR_events != 0:
+        PIR_events_time = (24*60*60)/PIR_events  # PIR events every "PIR_events_time" seconds. Averaged in a day
+    else:
+        PIR_events_time = 0
+else:
+    PIR_events = 0
+'''
+
 # if using_Accelerometer:
 #    i_sleep += 0.000008
 
 # Communication (wake up and transmission) and Sensing Consumption
 i_wake_up_advertise = 0.00006; time_wake_up_advertise = 11
-i_BLE_comm = 0.00025; time_BLE_comm = 5
+i_BLE_comm = 0.00025; time_BLE_comm = 4
 i_BLE_sens = ((i_wake_up_advertise * time_wake_up_advertise) + (i_BLE_comm * time_BLE_comm))/(time_wake_up_advertise + time_BLE_comm)
-#time_BLE_sens = time_wake_up_advertise + time_BLE_comm
+time_BLE_sens = time_wake_up_advertise + time_BLE_comm
 
 #i_BLE_sens = 0.000210; time_BLE_sens = 6.5
 
@@ -42,28 +54,17 @@ v_solar_200_lux = 1.5; i_solar_200_lux = 0.000031
 p_solar_1_lux = (v_solar_200_lux * i_solar_200_lux) / 200.0
 
 
-def Energy(SC_volt, light, PIR_or_thpl, PIR_on_off, thpl_on_off, next_wake_up_time, PIR_event, thpl_event):
+def Energy(SC_volt, light, PIR_on_off, thpl_on_off, next_wake_up_time, PIR_event, thpl_event):
     #SC_volt_save = SC_volt
-
-    if int(PIR_or_thpl) > 0:
-        i_sleep = 0.0000047;
-        time_BLE_comm = 12; num_sens = 3
-        time_BLE_sens = time_wake_up_advertise + time_BLE_comm
-    else:
-        time_BLE_comm = 5; num_sens = 1
-        time_BLE_sens = time_wake_up_advertise + time_BLE_comm
-        i_sleep = 0.0000032;
-
-    i_sleep_PIR = i_sleep + 0.000001
 
     if thpl_on_off == 1:
         temp_polling_min = 1
+        num_sens = 3
     else:
         temp_polling_min = 15
+        num_sens = 1
 
-    i_BLE_sens = ((i_wake_up_advertise * time_wake_up_advertise) + (i_BLE_comm * (time_BLE_comm)))/(time_wake_up_advertise + time_BLE_comm)
-
-    volt_regulator = 3.2
+    volt_regulator = 2.55
     next_wake_up_time_sec = next_wake_up_time * 60 # in seconds
     temp_polling_sec = temp_polling_min * 60 # in seconds
 
@@ -73,14 +74,13 @@ def Energy(SC_volt, light, PIR_or_thpl, PIR_on_off, thpl_on_off, next_wake_up_ti
     Energy_Rem = SC_volt * SC_volt * 0.5 * SC_size
 
     if SC_volt <= SC_volt_min: # Node is death and not consuming energy
-    #if False:
         Energy_Used = 0
     else: # Node is alive
-        # Energy used to sense sensors (e.g. light, temp)
+        # Energy used to sense sensors (i.e. light and temp)
         Energy_Used = (time_sens * volt_regulator * i_sens) * (num_sens * num_of_pollings)
         time_sleep -= (time_sens * num_of_pollings)
 
-        # energy consumed to detect people with PIR
+        # energy consumed to detect people
         Energy_Used += (time_PIR_detect * volt_regulator * i_PIR_detect) * PIR_event
         time_sleep -= (time_PIR_detect * PIR_event)
 
@@ -91,21 +91,17 @@ def Energy(SC_volt, light, PIR_or_thpl, PIR_on_off, thpl_on_off, next_wake_up_ti
 
         # Energy Consumed by the node in sleep mode
         i_sl = i_sleep_PIR if PIR_on_off == 1 else i_sleep
-        if SC_volt > 5.2:
-            i_sl += 0.0000045
         Energy_Used += (time_sleep * volt_regulator * i_sl)
 
     Energy_Prod = next_wake_up_time_sec * p_solar_1_lux * light
     #print(Energy_Prod, Energy_Used, Energy_Rem, SC_volt, event)
 
     # Energy cannot be lower than 0
-    #Energy_Rem = max(Energy_Rem - Energy_Used + Energy_Prod, 0)
-    Energy_Rem = Energy_Rem - Energy_Used + Energy_Prod
+    Energy_Rem = max(Energy_Rem - Energy_Used + Energy_Prod, 0)
 
     SC_volt = np.sqrt((2*Energy_Rem)/SC_size)
 
     # Setting Boundaries for Voltage
-
     if SC_volt > SC_volt_max:
         SC_volt = np.array([SC_volt_max])
     if SC_volt < SC_volt_min:
@@ -141,7 +137,6 @@ def light_event_func(t_now, next_wake_up_time, mode, PIR_on_off, PIR_events_foun
 
                 if PIR == 0 and no_event == 0 and hold != 0:
                     thpl_event_gt += 1
-                    print("new_thpl event: ", i)
 
             #if (mode == 1 or mode == 2) and PIR > 0 and PIR_on_off > 0:
             #    if check_time.time() not in PIR_events_found_dict:

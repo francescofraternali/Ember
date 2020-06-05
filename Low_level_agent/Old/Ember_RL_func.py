@@ -7,34 +7,18 @@ import json
 import threading
 from subprocess import PIPE, Popen, call
 import random
-import multiprocessing
 
 #from training_pible import light_divider
 check_max = 5
 
-def gt_mode_hours(volt):
-    if volt >= 90:
-        hours = 18
-    elif volt >=80 and volt < 90:
-        houra = 12
-    elif volt >=70 and volt < 80:
-        hours = 6
-    elif volt >= 60 and volt < 70:
-        hours = 0
-    else:
-        hours = 0
-
-    return hours
 
 def valid_line(line):
     #print(line)
     if line != '\n':
         line_split = line.split("|")
-        if len(line_split) > 9 and line_split[5] != '':
-            error = 'list index out of range'
-            if error not in line_split:
-                if int(line_split[5]) != 0:
-                    return True
+        error = 'list index out of range'
+        if error not in line_split:
+            return True
 
     return False
 
@@ -100,7 +84,7 @@ def select_input_starter(path_light_data, start_data_date, num_light_input, num_
 
     return start_light_list, start_volt_list, starter_data
 
-def build_inputs(time, num_hours_input, num_minutes_input, last_light_list, last_volt_list):
+def build_inputs(time, sc_volt, num_hours_input, num_minutes_input, last_light_list, last_volt_list):
     list = []
     for i in range(0, num_hours_input):
         #value = time - datetime.timedelta(hours=1)
@@ -124,11 +108,11 @@ def build_inputs(time, num_hours_input, num_minutes_input, last_light_list, last
     return hour_array, minute_array, light_array, sc_array
 
 def updates_arrays(hour_array, minute_array, light_array, SC_Volt_array, time, light, SC_temp):
-    #hour_array = np.roll(hour_array, 1)
-    #hour_array[0] = time.hour
+    hour_array = np.roll(hour_array, 1)
+    hour_array[0] = time.hour
 
-    #minute_array = np.roll(minute_array, 1)
-    #minute_array[0] = time.minute
+    minute_array = np.roll(minute_array, 1)
+    minute_array[0] = time.minute
 
     list = []
     for i in range(0, 24):
@@ -241,66 +225,6 @@ def find_agent_saved(path):
 
     return folder, iteration
 
-
-def find_last_checkpoint(path, parent_dir):
-    folder = parent_dir
-
-    # detect checkpoint to resume
-    proc = subprocess.Popen("ls " + parent_dir, stdout=subprocess.PIPE, shell=True)
-    (out, err) = proc.communicate()
-    #print(out)
-    out = out.decode()
-    spl = out.strip().split('\n')
-    max = 0
-    for i in spl:
-        tester = i.split('_')
-        #print(tester, len(tester), tester[1].isdigit())
-        if "checkpoint" in tester and len(tester)==2 and tester[1].isdigit():
-            if int(tester[1]) > max:
-                max = int(tester[1])
-                iteration = i
-    iteration = max
-    print("\nFound folder: ", folder, "Last checkpoint found: ", iteration)
-
-    return folder, iteration
-
-def find_best_checkpoint(path):  # Find best checkpoint
-
-    best_mean = - 10000
-    #tot_iterations = iteration
-
-    for count, line in enumerate(open(path + "/result.json", 'r')):
-        dict = json.loads(line)
-        #print(count, int(tot_iterations/2))
-        if round(dict['episode_reward_mean'], 3) >= best_mean: #and count > int(tot_iterations/2):
-            best_mean = round(dict['episode_reward_mean'], 3)
-            max = round(dict['episode_reward_max'], 3)
-            min = round(dict['episode_reward_min'], 3)
-            iteration = dict['training_iteration']
-
-    if iteration < 10:
-        iteration = 10
-    iter_str = str(iteration)
-    iteration = (int(iter_str[:-1])* 10)
-    print("Best checkpoint found:", iteration, ". Max Rew Episode: ", max , ". Mean Rew Episode: ", best_mean, ". Min Rew Episode", min)
-
-    return iteration
-
-def rm_old_save_new_agent(parent_dir, save_agent_folder):
-    for i in range(2):
-        proc = subprocess.Popen("rm -r " + save_agent_folder + '/*', stdout=subprocess.PIPE, shell=True)
-        (out, err) = proc.communicate()
-        sleep(0.5)
-    # Save new Agent into Agents_Saved==
-    proc = subprocess.Popen("mv " + parent_dir + " " + save_agent_folder + '/', stdout=subprocess.PIPE, shell=True)
-    #proc = subprocess.Popen("cp -r /home/" + getpass.getuser() + "/ray_results/" + folder + " " + save_agent_folder, stdout=subprocess.PIPE, shell=True)
-    sleep(0.5)
-
-def cores_available(): # Find number of cores available in the running system
-    print("Number of cores available: ", multiprocessing.cpu_count())
-    print("Number of cores to use: ", multiprocessing.cpu_count() - 2)
-    return int(multiprocessing.cpu_count()) - 2
-
 class Command(object):
     def __init__(self, cmd):
         self.cmd = cmd
@@ -378,8 +302,8 @@ def sync_input_data(pwd, bs_name, File_name, destination):
         print("No new file to merge. Check Check Check.")
 
 
-def sync_action(file, action, pir_or_thpl): # Now Let's update the action to the action file
-    act_1, act_2 = action_encode(action, pir_or_thpl)
+def sync_action(file, action): # Now Let's update the action to the action file
+    act_1, act_2 = action_decode(action)
     with open(file, 'r') as f:
         dic = json.load(f)
 
@@ -388,30 +312,21 @@ def sync_action(file, action, pir_or_thpl): # Now Let's update the action to the
     dic["Action_2"] = act_2
     dic["Action_3"] = act_3
 
-    print("pir_or_thpl: ", pir_or_thpl, ". Written Act_1, Act_2, Act_3: ", act_1, act_2, act_3)
-
     with open(file, 'w') as f:
         json.dump(dic, f)
 
-def action_encode(action, pir_or_thpl): # Action_1 = PIR_onoff + State_transition; Action_2 = Sensing sensitivity
-
-    if isinstance(action, list):
+def action_decode(action): # Action_1 = PIR_onoff + State_transition; Action_2 = Sensing sensitivity
+    if len(action) < 3:
         PIR = int(action[0])
         thpl = int(action[1])
-    else:
-        if pir_or_thpl == '0':
-            PIR = action; thpl = 0
-        elif pir_or_thpl == '1':
-            PIR = 0; thpl = action
-
-    if PIR == 0 and thpl == 0: # everything off
-        Action_1 = '3C'; Action_2 = '01'
-    elif PIR == 1 and thpl == 0:
-        Action_1 = 'BC'; Action_2 = '01'
-    elif PIR == 0 and thpl == 1:
-        Action_1 = '3C'; Action_2 = '0B'
-    elif PIR == 1 and thpl == 1:
-        Action_1 = 'BC'; Action_2 = '0B'
+        if PIR == 0 and thpl == 0: # everything off
+            Action_1 = '3C'; Action_2 = '01'
+        elif PIR == 1 and thpl == 0:
+            Action_1 = 'BC'; Action_2 = '01'
+        elif PIR == 0 and thpl == 1:
+            Action_1 = '3C'; Action_2 = '0B'
+        elif PIR == 1 and thpl == 1:
+            Action_1 = 'BC'; Action_2 = '0B'
 
     return Action_1, Action_2
 
@@ -437,17 +352,3 @@ def add_random_volt(SC_Volt_array):
     #print(k, SC_Volt_array)
 
     return SC_Volt_array
-
-def adjust_sc_voltage(list, start_sc):
-    new_list = []
-    for i in range(0, len(list)):
-        if i == 0:
-            new_list.append(start_sc)
-        else:
-            new_list.append(start_sc + (list[i] - list[0]))
-
-    for i in range(len(new_list)):
-        new_list[i] = SC_volt_max if new_list[i] > SC_volt_max else new_list[i]
-        new_list[i] = SC_volt_min if new_list[i] < SC_volt_min else new_list[i]
-
-    return new_list
