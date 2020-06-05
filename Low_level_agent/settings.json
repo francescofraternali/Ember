@@ -1,0 +1,23 @@
+[
+  {
+    "title": "Test",
+    "file_light": "Light_Test.txt",
+    "agent_saved_folder": "Agent_Saved",
+    "training_iterations": 100,
+    "num_cores": "max",
+    "light_divider": "1",
+    "train/test/real": "test",
+    "real_train_days": "14",
+    "real_train_max": "14",
+    "start_train": "05/04/20 00:00:00",
+    "end_train": "05/18/20 00:00:00",
+    "start_test": "05/19/20 00:00:00",
+    "end_test": "05/20/20 00:00:00",
+    "sc_volt_start_train": "3.5",
+    "sc_volt_start_test": "3.5",
+    "PIR_or_thpl": "1",
+    "GT_mode": "0",
+    "bs_name": "",
+    "pwd": ""
+}
+]
