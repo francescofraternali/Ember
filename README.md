@@ -10,7 +10,8 @@ Ember: Energy Management of Battery-less Event Detection Sensors with Reinforcem
 - pip install gym
 - pip install psutil
 - pip install ray[tune]
-- pip install ray[rllib]==0.8
+- pip install ray[rllib]==0.8.2
+- pip install pandas
 - pip install matplotlib
 - pip install opencv-python
 - pip install requests
