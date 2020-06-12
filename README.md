@@ -18,5 +18,6 @@ Ember: Energy Management of Battery-less Event Detection Sensors with Reinforcem
 - pip install lz4
 - pip install setproctitle
 - pip install tensorflow
+- sudo apt-get install sshpass
 - git clone https://github.com/francescofraternali/Ember.git
 - Enjoy!
