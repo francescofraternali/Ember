@@ -1,7 +1,8 @@
 # Ember
 Ember: Energy Management of Battery-less Event Detection Sensors with Reinforcement Learning
 
-Using Deep Reinforcement Learning to detect events. Ember can detect both PIR events and temperature, humidity, pressure and light (THPL) events. The goal of the agent is to control the sensors (i.e. turning on/off the sensors) to catch events while saving energy whenever possible.
+Using Deep Reinforcement Learning to detect events. Ember can detect both PIR events and temperature, humidity, pressure and light (THPL) events. The goal of the agent is to control the sensors (i.e. turning on/off the sensors) to catch events while saving energy whenever possible. In the given example, Ember will try to catch THPL events. The agent simulate the Pible mote to maximize its reward. A THPL event happend whenever the temperature, humidity, pressure and light vary by more than ±0.1C, ±1%, ±100Pa, and ±50 lux respectively.
+
 Modify parameters on settings.json. Use "train/test/real": "real" to run the system in the realworld with real sensors.
 
 
