@@ -1,0 +1,25 @@
+[
+  {
+    "title": "Test",
+    "file_light": "train_data_1.txt",
+    "agent_saved_folder": "Agent_Saved",
+    "training_iterations": 50,
+    "num_cores": "max",
+    "light_divider": "1",
+    "train/test/real": "train",
+    "real_train_days": "0",
+    "real_train_max": "30",
+    "start_train": "07/28/20 00:00:00",
+    "end_train": "07/29/20 00:00:00",
+    "start_test": "07/28/20 00:00:00",
+    "end_test": "07/29/20 00:00:00",
+    "sc_volt_start_train": "3.2",
+    "sc_volt_start_test": "3.2",
+    "PIR_or_thpl": "1",
+    "GT_mode": "0",
+    "train_gt/rm_miss/inject": "0",
+    "update_folder": "",
+    "bs_name": "",
+    "pwd": ""
+}
+]
