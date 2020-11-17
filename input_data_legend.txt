@@ -1,0 +1,1 @@
+time_stamp|data_input|temperature|humidity|nan|supercap_volt_percentage|PIR_event|Reed_switch_event|light|nan|pressure
