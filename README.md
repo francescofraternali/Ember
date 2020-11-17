@@ -6,6 +6,7 @@ Using Deep Reinforcement Learning to detect events. Ember can detect both PIR ev
 Modify parameters on settings.json.
 
 Set "PIR_or_thpl" to "0" to detect PIR or to "1" to detect THPL events
+
 Set "SS_mode": "1", to test the SS Mode
 
 # Installation
